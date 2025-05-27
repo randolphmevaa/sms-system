@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Upload, 
   MessageSquare, 
@@ -10,21 +10,27 @@ import {
   FileText, 
   CheckCircle, 
   AlertCircle, 
-  Download,
+  // Download,
   Plus,
   Trash2,
   Edit3,
-  Play,
-  Pause,
+  // Play,
+  // Pause,
   BarChart3,
   Sparkles,
   Zap,
   Target,
   Clock,
   TrendingUp,
-  Shield,
-  Globe,
-  Wifi
+  // Shield,
+  // Globe,
+  // Wifi,
+  Settings,
+  // ArrowRight,
+  // Phone,
+  // User,
+  // Calendar,
+  // Hash
 } from 'lucide-react';
 
 // TypeScript interfaces
@@ -50,6 +56,7 @@ interface TabButtonProps {
   isActive: boolean;
   onClick: (id: TabType) => void;
   badge?: number;
+  description?: string;
 }
 
 const SMSCampaignSystem: React.FC = () => {
@@ -159,7 +166,7 @@ const SMSCampaignSystem: React.FC = () => {
     setCampaignStatus('running');
     setResults({ sent: 0, failed: 0, total: contacts.length, errors: [] });
     
-    // Real API integration simulation
+    // Real API integration
     for (let i = 0; i < contacts.length; i++) {
       const contact = contacts[i];
       const personalizedMessage = generatePreview(contact);
@@ -178,10 +185,22 @@ const SMSCampaignSystem: React.FC = () => {
       }
       
       try {
-        // Simulate API call
-        const success = Math.random() > 0.1; // 90% success rate for demo
+        const response = await fetch('/api/sms', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            destinataires: phoneNumber,
+            message: personalizedMessage,
+            expediteur: expediteur,
+            date: '' // Envoi immédiat
+          })
+        });
+
+        const result = await response.json();
         
-        if (success) {
+        if (result.success) {
           setResults(prev => ({ 
             ...prev, 
             sent: prev.sent + 1 
@@ -190,10 +209,10 @@ const SMSCampaignSystem: React.FC = () => {
           setResults(prev => ({ 
             ...prev, 
             failed: prev.failed + 1,
-            errors: [...prev.errors, { contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), error: 'Erreur d\'envoi simulée' }]
+            errors: [...prev.errors, { contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), error: result.errors || result.message }]
           }));
         }
-      } catch (error) {
+      } catch  {
         setResults(prev => ({ 
           ...prev, 
           failed: prev.failed + 1,
@@ -203,129 +222,102 @@ const SMSCampaignSystem: React.FC = () => {
       
       setProgress(((i + 1) / contacts.length) * 100);
       // Small delay to see progress
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
     
     setCampaignStatus('completed');
   };
 
-  const TabButton: React.FC<TabButtonProps> = ({ id, label, icon: Icon, isActive, onClick, badge }) => (
+  const TabButton: React.FC<TabButtonProps> = ({ id, label, icon: Icon, isActive, onClick, badge, description }) => (
     <button
       onClick={() => onClick(id)}
-      className={`group relative flex items-center space-x-3 px-6 py-4 rounded-2xl font-semibold transition-all duration-500 transform hover:scale-105 ${
+      className={`group relative flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-6 rounded-2xl font-semibold transition-all duration-300 hover:scale-105 ${
         isActive 
-          ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-2xl shadow-purple-500/30 scale-105' 
-          : 'bg-white/80 backdrop-blur-xl text-gray-700 hover:bg-white hover:text-gray-900 shadow-xl hover:shadow-2xl border border-white/50 hover:border-white/80'
+          ? 'bg-blue-600 text-white shadow-xl shadow-blue-200' 
+          : 'bg-white text-gray-700 hover:bg-gray-50 shadow-lg hover:shadow-xl border border-gray-100'
       }`}
     >
-      <div className="relative">
-        <Icon size={22} className={`transition-all duration-500 ${isActive ? 'scale-110 drop-shadow-lg' : 'group-hover:scale-110'}`} />
+      <div className="relative flex-shrink-0">
+        <Icon size={24} className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
         {badge && badge > 0 && (
-          <span className="absolute -top-2 -right-2 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold shadow-lg animate-pulse">
-            {badge}
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+            {badge > 99 ? '99+' : badge}
           </span>
         )}
       </div>
-      <span className="relative font-bold">
-        {label}
-        {isActive && (
-          <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-white/60 rounded-full shadow-sm"></div>
+      <div className="text-center sm:text-left">
+        <div className="font-bold text-sm sm:text-base">{label}</div>
+        {description && (
+          <div className={`text-xs mt-1 ${isActive ? 'text-blue-100' : 'text-gray-500'}`}>
+            {description}
+          </div>
         )}
-      </span>
-      {isActive && (
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-white/10 to-white/5 animate-pulse"></div>
-      )}
+      </div>
     </button>
   );
 
-  const StatCard: React.FC<{ title: string; value: string | number; subtitle: string; gradient: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = 
-    ({ title, value, subtitle, gradient, icon: Icon }) => (
-    <div className={`bg-gradient-to-br ${gradient} rounded-2xl p-6 text-white shadow-2xl transform hover:scale-105 transition-all duration-500 relative overflow-hidden group`}>
-      <div className="absolute top-0 right-0 opacity-10 transform rotate-12 scale-150">
-        <Icon size={80} />
+  const StatCard: React.FC<{ 
+    title: string; 
+    value: string | number; 
+    subtitle: string; 
+    color: string; 
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+    trend?: number;
+  }> = ({ title, value, subtitle, color, icon: Icon, trend }) => (
+    <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:scale-105">
+      <div className="flex items-center justify-between mb-4">
+        <div className={`p-3 rounded-xl ${color}`}>
+          <Icon size={24} className="text-white" />
+        </div>
+        {trend !== undefined && (
+          <div className={`flex items-center space-x-1 text-sm font-medium ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <TrendingUp size={16} className={trend >= 0 ? '' : 'rotate-180'} />
+            <span>{Math.abs(trend)}%</span>
+          </div>
+        )}
       </div>
-      <div className="relative z-10">
-        <div className="text-4xl font-black mb-2 drop-shadow-lg">{value}</div>
-        <div className="text-white/90 font-semibold text-lg mb-1">{title}</div>
-        <div className="text-white/70 text-sm font-medium">{subtitle}</div>
-      </div>
-      <div className="absolute inset-0 bg-white/5 transform -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+      <div className="text-3xl font-bold text-gray-900 mb-1">{value}</div>
+      <div className="text-gray-600 font-medium">{title}</div>
+      <div className="text-sm text-gray-500 mt-1">{subtitle}</div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
-      {/* Enhanced Background Effects */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-1/2 -right-1/2 w-full h-full bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-1/2 -left-1/2 w-full h-full bg-gradient-to-tr from-indigo-500/20 to-pink-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-cyan-400/10 to-blue-500/10 rounded-full blur-2xl animate-float"></div>
-      </div>
-
-      {/* Floating particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-2 h-2 bg-white/10 rounded-full animate-float"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 10}s`,
-              animationDuration: `${10 + Math.random() * 20}s`
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Enhanced Header */}
-      <div className="relative bg-black/20 backdrop-blur-2xl shadow-2xl border-b border-white/10">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-8">
-            <div className="flex items-center space-x-6">
-              <div className="relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-4 rounded-3xl shadow-2xl">
-                <MessageSquare className="h-10 w-10 text-white drop-shadow-lg" />
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full animate-ping"></div>
-                <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center">
-                  <Wifi size={12} className="text-white" />
-                </div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 space-y-4 sm:space-y-0">
+            <div className="flex items-center space-x-4">
+              <div className="relative bg-blue-600 p-3 rounded-2xl shadow-lg">
+                <MessageSquare className="h-8 w-8 text-white" />
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
               </div>
               <div>
-                <h1 className="text-4xl font-black bg-gradient-to-r from-white via-blue-100 to-purple-100 bg-clip-text text-transparent drop-shadow-xl">
-                  Campagne SMS Pro
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                  NexusMessage Pro
                 </h1>
-                <p className="text-lg text-white/70 flex items-center space-x-3 mt-2">
-                  <Sparkles size={16} className="text-yellow-400" />
-                  <span className="font-semibold">Système de publipostage SMS professionnel</span>
-                  <Shield size={16} className="text-green-400" />
+                <p className="text-gray-600 flex items-center space-x-2 text-sm sm:text-base">
+                  <Sparkles size={16} className="text-blue-500" />
+                  <span>Plateforme de campagnes SMS professionnelle</span>
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-6">
-              <div className="text-center bg-black/30 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10">
-                <div className="text-sm text-white/60 font-semibold uppercase tracking-wider">Contacts</div>
-                <div className="text-3xl font-black bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  {contacts.length}
-                </div>
-                <div className="flex items-center justify-center space-x-1 mt-1">
-                  <TrendingUp size={12} className="text-green-400" />
-                  <span className="text-xs text-green-400 font-medium">Actifs</span>
-                </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-center bg-gray-50 rounded-xl p-4 min-w-[100px]">
+                <div className="text-sm text-gray-500 font-medium">Contacts</div>
+                <div className="text-2xl font-bold text-blue-600">{contacts.length}</div>
               </div>
-              <div className="text-center bg-black/30 backdrop-blur-xl rounded-2xl p-6 shadow-2xl border border-white/10">
-                <div className="text-sm text-white/60 font-semibold uppercase tracking-wider">Statut</div>
-                <div className={`text-2xl font-black ${
-                  campaignStatus === 'completed' ? 'text-green-400' :
-                  campaignStatus === 'running' ? 'text-blue-400' :
-                  'text-white/60'
+              <div className="text-center bg-gray-50 rounded-xl p-4 min-w-[100px]">
+                <div className="text-sm text-gray-500 font-medium">Statut</div>
+                <div className={`text-lg font-bold ${
+                  campaignStatus === 'completed' ? 'text-green-600' :
+                  campaignStatus === 'running' ? 'text-blue-600' :
+                  'text-gray-400'
                 }`}>
                   {campaignStatus === 'completed' ? 'Terminé' :
-                   campaignStatus === 'running' ? 'En cours' :
+                   campaignStatus === 'running' ? 'Actif' :
                    'Prêt'}
-                </div>
-                <div className="flex items-center justify-center space-x-1 mt-1">
-                  <Globe size={12} className="text-blue-400" />
-                  <span className="text-xs text-blue-400 font-medium">Système</span>
                 </div>
               </div>
             </div>
@@ -333,9 +325,9 @@ const SMSCampaignSystem: React.FC = () => {
         </div>
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Enhanced Navigation Tabs */}
-        <div className="flex flex-wrap gap-6 mb-12 p-4 bg-black/20 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Navigation Tabs */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
           <TabButton 
             id="contacts" 
             label="Contacts" 
@@ -343,6 +335,7 @@ const SMSCampaignSystem: React.FC = () => {
             isActive={activeTab === 'contacts'}
             onClick={setActiveTab}
             badge={contacts.length}
+            description="Gérer vos contacts"
           />
           <TabButton 
             id="template" 
@@ -351,6 +344,7 @@ const SMSCampaignSystem: React.FC = () => {
             isActive={activeTab === 'template'}
             onClick={setActiveTab}
             badge={template ? 1 : 0}
+            description="Créer votre message"
           />
           <TabButton 
             id="preview" 
@@ -358,6 +352,7 @@ const SMSCampaignSystem: React.FC = () => {
             icon={Eye} 
             isActive={activeTab === 'preview'}
             onClick={setActiveTab}
+            description="Vérifier le rendu"
           />
           <TabButton 
             id="campaign" 
@@ -365,6 +360,7 @@ const SMSCampaignSystem: React.FC = () => {
             icon={Send} 
             isActive={activeTab === 'campaign'}
             onClick={setActiveTab}
+            description="Lancer l'envoi"
           />
           <TabButton 
             id="results" 
@@ -373,26 +369,27 @@ const SMSCampaignSystem: React.FC = () => {
             isActive={activeTab === 'results'}
             onClick={setActiveTab}
             badge={results.sent}
+            description="Analyser les données"
           />
         </div>
 
-        {/* Enhanced Content Area */}
-        <div className="bg-black/20 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden">
+        {/* Content Area */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
           
           {/* Contacts Tab */}
           {activeTab === 'contacts' && (
-            <div className="p-10">
-              <div className="flex justify-between items-center mb-10">
+            <div className="p-6 sm:p-8">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
                 <div>
-                  <h2 className="text-4xl font-black bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-3">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                     Gestion des Contacts
                   </h2>
-                  <p className="text-white/60 text-lg">Importez vos contacts ou ajoutez-les manuellement pour votre campagne</p>
+                  <p className="text-gray-600">Importez vos contacts ou ajoutez-les manuellement</p>
                 </div>
-                <div className="flex space-x-4">
-                  <label className="group bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 hover:from-blue-700 hover:via-blue-800 hover:to-indigo-800 text-white px-8 py-4 rounded-2xl cursor-pointer transition-all duration-500 transform hover:scale-105 shadow-2xl hover:shadow-blue-500/25 flex items-center space-x-3 border border-blue-500/30">
-                    <Upload size={22} className="group-hover:scale-110 transition-transform duration-300" />
-                    <span className="font-bold text-lg">Importer CSV</span>
+                <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+                  <label className="flex items-center justify-center space-x-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl cursor-pointer transition-all duration-200 font-semibold w-full sm:w-auto">
+                    <Upload size={20} />
+                    <span>Importer CSV</span>
                     <input 
                       type="file" 
                       accept=".csv" 
@@ -402,96 +399,102 @@ const SMSCampaignSystem: React.FC = () => {
                   </label>
                   <button 
                     onClick={addContact}
-                    className="group bg-gradient-to-r from-emerald-600 via-green-700 to-teal-700 hover:from-emerald-700 hover:via-green-800 hover:to-teal-800 text-white px-8 py-4 rounded-2xl transition-all duration-500 transform hover:scale-105 shadow-2xl hover:shadow-emerald-500/25 flex items-center space-x-3 border border-emerald-500/30"
+                    className="flex items-center justify-center space-x-3 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl transition-all duration-200 font-semibold w-full sm:w-auto"
                   >
-                    <Plus size={22} className="group-hover:scale-110 transition-transform duration-300" />
-                    <span className="font-bold text-lg">Ajouter</span>
+                    <Plus size={20} />
+                    <span>Ajouter</span>
                   </button>
                 </div>
               </div>
 
               {contacts.length === 0 ? (
-                <div className="text-center py-20">
-                  <div className="relative inline-block mb-8">
-                    <Upload className="mx-auto h-20 w-20 text-white/30" />
-                    <div className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
-                      <Plus size={16} className="text-white" />
+                <div className="text-center py-16">
+                  <div className="relative inline-block mb-6">
+                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4 mx-auto">
+                      <Users className="h-10 w-10 text-gray-400" />
                     </div>
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-4">Aucun contact chargé</h3>
-                  <p className="text-white/60 mb-8 max-w-md mx-auto text-lg">
-                    Commencez par importer un fichier CSV ou ajouter des contacts manuellement pour créer votre campagne professionnelle
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Aucun contact chargé</h3>
+                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                    Commencez par importer un fichier CSV ou ajouter des contacts manuellement
                   </p>
+                  
                   {uploadError && (
-                    <div className="mb-6 p-4 bg-red-500/20 border border-red-500/30 rounded-2xl text-red-300 max-w-md mx-auto backdrop-blur-xl">
-                      <AlertCircle size={18} className="inline mr-2" />
-                      {uploadError}
+                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 max-w-md mx-auto">
+                      <div className="flex items-center space-x-2">
+                        <AlertCircle size={20} />
+                        <span className="font-medium">{uploadError}</span>
+                      </div>
                     </div>
                   )}
+                  
                   {isUploading && (
-                    <div className="mb-6 p-4 bg-blue-500/20 border border-blue-500/30 rounded-2xl text-blue-300 max-w-md mx-auto backdrop-blur-xl">
-                      <div className="animate-spin inline-block w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full mr-3"></div>
-                      Traitement du fichier CSV en cours...
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-700 max-w-md mx-auto">
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                        <span className="font-medium">Traitement du fichier CSV...</span>
+                      </div>
                     </div>
                   )}
-                  <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-3xl p-8 max-w-2xl mx-auto border border-blue-500/20 backdrop-blur-xl">
-                    <h4 className="font-bold text-white mb-6 flex items-center justify-center space-x-3 text-xl">
-                      <FileText size={24} className="text-blue-400" />
+                  
+                  <div className="bg-blue-50 rounded-2xl p-6 max-w-2xl mx-auto border border-blue-100">
+                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center justify-center space-x-2">
+                      <FileText size={20} className="text-blue-600" />
                       <span>Format CSV Recommandé</span>
                     </h4>
-                    <div className="text-white/80 space-y-4 text-left">
-                      <div className="flex items-center space-x-3">
-                        <CheckCircle size={16} className="text-green-400" />
+                    <div className="text-left space-y-3">
+                      <div className="flex items-center space-x-3 text-gray-700">
+                        <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
                         <span>Première ligne = en-têtes des colonnes</span>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <CheckCircle size={16} className="text-green-400" />
+                      <div className="flex items-center space-x-3 text-gray-700">
+                        <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
                         <span>Variables automatiquement détectées</span>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <CheckCircle size={16} className="text-green-400" />
+                      <div className="flex items-center space-x-3 text-gray-700">
+                        <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
                         <span>Séparateur : virgule (,)</span>
                       </div>
-                      <code className="block bg-black/40 backdrop-blur-xl px-6 py-4 rounded-2xl mt-6 border border-white/10 text-green-300 font-mono">
-                        nom,telephone,rdv,date<br/>
-                        Martin Dubois,+33123456789,14h30,2024-05-28
-                      </code>
+                      <pre className="bg-white p-4 rounded-lg mt-4 text-sm font-mono text-gray-800 border border-gray-200 overflow-x-auto">
+{`nom,telephone,rdv,date
+Martin Dubois,+33123456789,14h30,2024-05-28`}
+                      </pre>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="bg-black/30 backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+                <div className="bg-gray-50 rounded-2xl overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="bg-gradient-to-r from-gray-800/50 to-gray-700/50 border-b border-white/10">
+                        <tr className="bg-gray-100 border-b border-gray-200">
                           {(csvHeaders.length > 0 ? csvHeaders : ['nom', 'telephone', 'rdv', 'date']).map(header => (
-                            <th key={header} className="px-8 py-6 text-left text-sm font-bold text-white uppercase tracking-wider">
+                            <th key={header} className="px-6 py-4 text-left text-sm font-semibold text-gray-700 capitalize whitespace-nowrap">
                               {header.replace(/_/g, ' ')}
                             </th>
                           ))}
-                          <th className="px-8 py-6 text-center text-sm font-bold text-white uppercase tracking-wider">Actions</th>
+                          <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 whitespace-nowrap">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/10">
-                        {contacts.map((contact, index) => (
-                          <tr key={contact.id} className="hover:bg-white/5 transition-all duration-300">
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {contacts.map((contact ) => (
+                          <tr key={contact.id} className="hover:bg-gray-50 transition-colors duration-200">
                             {(csvHeaders.length > 0 ? csvHeaders : ['nom', 'telephone', 'rdv', 'date']).map(field => (
-                              <td key={field} className="px-8 py-6">
+                              <td key={field} className="px-6 py-4 whitespace-nowrap">
                                 <input 
                                   value={String(contact[field] || '')}
                                   onChange={(e) => updateContact(contact.id, field, e.target.value)}
-                                  className="w-full border border-white/20 rounded-xl px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 bg-black/40 backdrop-blur-xl text-white placeholder-white/40 font-medium shadow-inner"
+                                  className="w-full min-w-[120px] border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 bg-white"
                                   placeholder={field}
                                 />
                               </td>
                             ))}
-                            <td className="px-8 py-6 text-center">
+                            <td className="px-6 py-4 text-center whitespace-nowrap">
                               <button 
                                 onClick={() => deleteContact(contact.id)}
-                                className="text-red-400 hover:text-red-300 p-3 rounded-xl hover:bg-red-500/20 transition-all duration-300 transform hover:scale-110 border border-red-500/20 hover:border-red-500/40"
+                                className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
                               >
-                                <Trash2 size={18} />
+                                <Trash2 size={16} />
                               </button>
                             </td>
                           </tr>
@@ -500,13 +503,13 @@ const SMSCampaignSystem: React.FC = () => {
                     </table>
                   </div>
                   {csvHeaders.length > 0 && (
-                    <div className="p-6 bg-green-500/10 border-t border-green-500/20 backdrop-blur-xl">
-                      <div className="text-green-300 flex items-center text-lg">
-                        <CheckCircle size={20} className="mr-3" />
-                        <span className="font-bold">Variables détectées et disponibles :</span>
-                        <div className="ml-4 flex flex-wrap gap-2">
+                    <div className="p-4 bg-green-50 border-t border-green-200">
+                      <div className="flex flex-wrap items-center text-sm text-green-700">
+                        <CheckCircle size={16} className="mr-2 flex-shrink-0" />
+                        <span className="font-medium mr-2">Variables détectées :</span>
+                        <div className="flex flex-wrap gap-2">
                           {csvHeaders.map(header => (
-                            <span key={header} className="bg-green-500/20 text-green-200 px-3 py-2 rounded-xl text-sm font-mono border border-green-500/30 shadow-lg">
+                            <span key={header} className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-mono">
                               {`{${header}}`}
                             </span>
                           ))}
@@ -521,95 +524,92 @@ const SMSCampaignSystem: React.FC = () => {
 
           {/* Template Tab */}
           {activeTab === 'template' && (
-            <div className="p-10">
-              <div className="mb-10">
-                <h2 className="text-4xl font-black bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-3">
+            <div className="p-6 sm:p-8">
+              <div className="mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                   Modèle de Message
                 </h2>
-                <p className="text-white/60 text-lg">Créez votre message personnalisé avec des variables dynamiques</p>
+                <p className="text-gray-600">Créez votre message personnalisé avec des variables dynamiques</p>
               </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <div className="space-y-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-bold text-white mb-4 uppercase tracking-wider">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
                       Expéditeur (obligatoire)
                     </label>
                     <input
                       value={expediteur}
                       onChange={(e) => setExpediteur(e.target.value)}
-                      className="w-full border border-white/20 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 bg-black/40 backdrop-blur-xl shadow-inner text-white placeholder-white/40 font-semibold text-lg"
+                      className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 bg-white"
                       placeholder="Nom de l'expéditeur"
                     />
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-bold text-white mb-4 uppercase tracking-wider">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
                       Message Template
                     </label>
                     <textarea
                       value={template}
                       onChange={(e) => setTemplate(e.target.value)}
-                      className="w-full h-80 border border-white/20 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 resize-none bg-black/40 backdrop-blur-xl shadow-inner text-white placeholder-white/40 font-medium text-lg leading-relaxed"
+                      className="w-full h-64 border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none text-gray-900 bg-white"
                       placeholder={csvHeaders.length > 0 
                         ? `Bonjour {${csvHeaders[0] || 'nom'}}, votre message personnalisé ici...`
                         : "Importez d'abord un CSV pour voir les variables disponibles"
                       }
                     />
-                    <div className="mt-6 p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl border border-blue-500/20 backdrop-blur-xl">
-                      <p className="font-bold text-white mb-4 flex items-center space-x-3 text-lg">
-                        <Target size={20} className="text-blue-400" />
-                        <span>Variables disponibles</span>
-                      </p>
-                      {csvHeaders.length > 0 ? (
-                        <div className="flex flex-wrap gap-3">
+                    
+                    {csvHeaders.length > 0 && (
+                      <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                        <p className="font-semibold text-gray-800 mb-3 flex items-center space-x-2">
+                          <Target size={16} className="text-blue-600" />
+                          <span>Variables disponibles</span>
+                        </p>
+                        <div className="flex flex-wrap gap-2">
                           {csvHeaders.map(variable => (
-                            <span 
+                            <button
                               key={variable} 
-                              className="bg-black/40 backdrop-blur-xl text-blue-300 px-4 py-2 rounded-xl text-sm font-mono border border-blue-400/30 shadow-lg hover:shadow-blue-400/20 transition-all duration-300 cursor-pointer hover:scale-105 hover:bg-blue-500/20"
+                              className="bg-white text-blue-800 px-3 py-1 rounded-lg text-sm font-mono border border-blue-300 hover:bg-blue-100 transition-colors duration-200"
                               onClick={() => setTemplate(prev => prev + `{${variable}}`)}
                             >
                               {`{${variable}}`}
-                            </span>
+                            </button>
                           ))}
                         </div>
-                      ) : (
-                        <div className="text-white/50 italic text-lg">
-                          Les variables apparaîtront ici après l'import d'un fichier CSV
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-bold text-white mb-4 uppercase tracking-wider">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Aperçu en Temps Réel
                   </label>
-                  <div className="bg-gradient-to-br from-gray-800/40 to-gray-900/40 border border-white/10 rounded-2xl p-8 h-96 overflow-y-auto shadow-2xl backdrop-blur-xl">
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 h-80 overflow-y-auto">
                     {template ? (
-                      <div className="bg-gradient-to-r from-white/10 to-white/5 rounded-2xl p-6 shadow-2xl border-l-4 border-purple-500 transform hover:scale-105 transition-all duration-500 backdrop-blur-xl">
-                        <div className="flex items-center space-x-3 text-sm text-white/60 mb-4">
-                          <MessageSquare size={16} />
-                          <span className="font-semibold">Aperçu SMS</span>
+                      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                        <div className="flex items-center space-x-2 text-xs text-gray-500 mb-3">
+                          <MessageSquare size={14} />
+                          <span>Aperçu SMS</span>
                         </div>
-                        <div className="text-white leading-relaxed font-medium text-lg">
+                        <div className="text-sm leading-relaxed text-gray-800">
                           {contacts.length > 0 ? generatePreview(contacts[0]) : template}
                         </div>
-                        <div className="flex justify-between items-center text-sm text-white/50 mt-4 pt-4 border-t border-white/10">
-                          <span className="font-medium">
+                        <div className="flex justify-between items-center text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
+                          <span>
                             {(contacts.length > 0 ? generatePreview(contacts[0]) : template).length} caractères
                           </span>
-                          <span className="flex items-center space-x-2 font-medium">
-                            <Clock size={14} />
+                          <span className="flex items-center space-x-1">
+                            <Clock size={12} />
                             <span>{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
                           </span>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center h-full text-white/40">
-                        <MessageSquare className="mb-4" size={48} />
-                        <span className="text-center text-lg font-medium">Saisissez votre message pour voir l'aperçu en temps réel</span>
+                      <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                        <MessageSquare className="mb-3" size={32} />
+                        <span className="text-center">Saisissez votre message pour voir l&apos;aperçu</span>
                       </div>
                     )}
                   </div>
@@ -620,53 +620,50 @@ const SMSCampaignSystem: React.FC = () => {
 
           {/* Preview Tab */}
           {activeTab === 'preview' && (
-            <div className="p-10">
-              <div className="mb-10">
-                <h2 className="text-4xl font-black bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-3">
+            <div className="p-6 sm:p-8">
+              <div className="mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                   Aperçu des Messages
                 </h2>
-                <p className="text-white/60 text-lg">Vérifiez chaque message personnalisé avant l'envoi</p>
+                <p className="text-gray-600">Vérifiez chaque message personnalisé avant l&apos;envoi</p>
               </div>
               
               {contacts.length === 0 || !template ? (
-                <div className="text-center py-20">
-                  <div className="relative inline-block mb-8">
-                    <Eye className="mx-auto h-20 w-20 text-white/30" />
-                    <div className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center shadow-lg">
-                      <AlertCircle size={16} className="text-white" />
-                    </div>
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6 mx-auto">
+                    <Eye className="h-10 w-10 text-gray-400" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-4">Aperçu non disponible</h3>
-                  <p className="text-white/60 max-w-md mx-auto text-lg">
-                    Veuillez ajouter des contacts et créer un modèle de message pour voir l'aperçu
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Aperçu non disponible</h3>
+                  <p className="text-gray-600 max-w-md mx-auto">
+                    Veuillez ajouter des contacts et créer un modèle de message pour voir l&apos;aperçu
                   </p>
                 </div>
               ) : (
-                <div className="space-y-6 max-h-96 overflow-y-auto">
+                <div className="space-y-4 max-h-96 overflow-y-auto">
                   {contacts.map((contact, index) => {
                     const nameField = csvHeaders.find(h => h.includes('nom') || h.includes('name')) || csvHeaders[0] || 'nom';
                     const phoneField = csvHeaders.find(h => h.includes('telephone') || h.includes('phone') || h.includes('tel') || h.includes('mobile')) || 'telephone';
                     
                     return (
-                      <div key={contact.id} className="bg-black/30 backdrop-blur-xl rounded-2xl p-8 border border-white/10 shadow-2xl hover:shadow-purple-500/10 transition-all duration-500 transform hover:scale-[1.02]">
-                        <div className="flex justify-between items-start mb-6">
-                          <div className="font-bold text-white flex items-center space-x-4 text-lg">
-                            <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-lg font-black shadow-lg">
+                      <div key={contact.id} className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="font-semibold text-gray-800 flex items-center space-x-2">
+                            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
                               {index + 1}
                             </div>
                             <span>{String(contact[nameField]) || `Contact ${index + 1}`}</span>
                           </div>
-                          <div className="text-sm text-white/60 bg-black/40 backdrop-blur-xl px-4 py-2 rounded-xl border border-white/20 font-mono">
+                          <div className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full border border-gray-200 font-mono">
                             {String(contact[phoneField]) || 'N/A'}
                           </div>
                         </div>
-                        <div className="bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-xl rounded-xl p-6 text-white border border-white/10 shadow-inner font-medium text-lg leading-relaxed">
+                        <div className="bg-white rounded-lg p-4 text-sm border border-gray-200 text-gray-800">
                           {generatePreview(contact)}
                         </div>
-                        <div className="flex justify-between items-center text-sm text-white/50 mt-4">
-                          <span className="font-medium">{generatePreview(contact).length} caractères</span>
-                          <span className="flex items-center space-x-2 font-medium">
-                            <CheckCircle size={14} className="text-green-400" />
+                        <div className="flex justify-between items-center text-xs text-gray-500 mt-3">
+                          <span>{generatePreview(contact).length} caractères</span>
+                          <span className="flex items-center space-x-1">
+                            <CheckCircle size={12} className="text-green-500" />
                             <span>Prêt à envoyer</span>
                           </span>
                         </div>
@@ -680,40 +677,40 @@ const SMSCampaignSystem: React.FC = () => {
 
           {/* Campaign Tab */}
           {activeTab === 'campaign' && (
-            <div className="p-10">
-              <div className="mb-10">
-                <h2 className="text-4xl font-black bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-3">
+            <div className="p-6 sm:p-8">
+              <div className="mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                   Lancement de Campagne
                 </h2>
-                <p className="text-white/60 text-lg">Contrôlez et suivez l'envoi de votre campagne SMS</p>
+                <p className="text-gray-600">Contrôlez et suivez l&apos;envoi de votre campagne SMS</p>
               </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                <div className="space-y-8">
-                  <div className="bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-pink-500/20 rounded-3xl p-10 border border-blue-500/20 shadow-2xl backdrop-blur-xl">
-                    <h3 className="text-2xl font-bold text-white mb-8 flex items-center space-x-3">
-                      <Sparkles size={24} className="text-yellow-400" />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200">
+                    <h3 className="text-xl font-semibold text-blue-800 mb-6 flex items-center space-x-2">
+                      <Settings size={20} />
                       <span>Résumé de la Campagne</span>
                     </h3>
-                    <div className="space-y-6">
-                      <div className="flex justify-between items-center p-4 bg-black/30 backdrop-blur-xl rounded-2xl border border-white/10">
-                        <span className="text-white/80 font-semibold text-lg">Nombre de contacts :</span>
-                        <span className="font-black text-white text-2xl">{contacts.length}</span>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-blue-100">
+                        <span className="text-blue-700 font-medium">Nombre de contacts :</span>
+                        <span className="font-bold text-blue-800 text-lg">{contacts.length}</span>
                       </div>
-                      <div className="flex justify-between items-center p-4 bg-black/30 backdrop-blur-xl rounded-2xl border border-white/10">
-                        <span className="text-white/80 font-semibold text-lg">Messages à envoyer :</span>
-                        <span className="font-black text-white text-2xl">{contacts.length}</span>
+                      <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-blue-100">
+                        <span className="text-blue-700 font-medium">Messages à envoyer :</span>
+                        <span className="font-bold text-blue-800 text-lg">{contacts.length}</span>
                       </div>
-                      <div className="flex justify-between items-center p-4 bg-black/30 backdrop-blur-xl rounded-2xl border border-white/10">
-                        <span className="text-white/80 font-semibold text-lg">Expéditeur :</span>
-                        <span className={`font-black text-xl ${expediteur ? 'text-green-400' : 'text-red-400'}`}>
+                      <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-blue-100">
+                        <span className="text-blue-700 font-medium">Expéditeur :</span>
+                        <span className={`font-bold text-lg ${expediteur ? 'text-green-600' : 'text-red-600'}`}>
                           {expediteur || 'Non défini'}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center p-4 bg-black/30 backdrop-blur-xl rounded-2xl border border-white/10">
-                        <span className="text-white/80 font-semibold text-lg">Statut du modèle :</span>
-                        <span className={`font-black text-xl flex items-center space-x-2 ${template ? 'text-green-400' : 'text-red-400'}`}>
-                          {template ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                      <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-blue-100">
+                        <span className="text-blue-700 font-medium">Statut du modèle :</span>
+                        <span className={`font-bold text-lg flex items-center space-x-1 ${template ? 'text-green-600' : 'text-red-600'}`}>
+                          {template ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
                           <span>{template ? 'Prêt' : 'Non défini'}</span>
                         </span>
                       </div>
@@ -723,83 +720,88 @@ const SMSCampaignSystem: React.FC = () => {
                   <button
                     onClick={startCampaign}
                     disabled={contacts.length === 0 || !template || !expediteur || campaignStatus === 'running'}
-                    className={`w-full flex items-center justify-center space-x-4 py-6 px-10 rounded-3xl font-black text-xl transition-all duration-500 transform ${
+                    className={`w-full flex items-center justify-center space-x-3 py-4 px-8 rounded-xl font-semibold text-lg transition-all duration-300 ${
                       contacts.length === 0 || !template || !expediteur || campaignStatus === 'running'
-                        ? 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 hover:from-emerald-700 hover:via-green-700 hover:to-teal-700 text-white shadow-2xl hover:shadow-emerald-500/25 hover:scale-105 border border-emerald-500/30'
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
                     }`}
                   >
-                    <Zap size={28} className={campaignStatus === 'running' ? 'animate-pulse' : ''} />
-                    <span>
-                      {campaignStatus === 'running' ? 'Envoi en cours...' : 'Lancer la Campagne'}
-                    </span>
+                    {campaignStatus === 'running' ? (
+                      <>
+                        <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+                        <span>Envoi en cours...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={24} />
+                        <span>Lancer la Campagne</span>
+                      </>
+                    )}
                   </button>
                 </div>
 
                 <div>
                   {campaignStatus !== 'idle' && (
-                    <div className="bg-black/30 backdrop-blur-xl border border-white/10 rounded-3xl p-10 shadow-2xl">
-                      <h3 className="text-2xl font-bold mb-8 flex items-center space-x-3 text-white">
-                        <BarChart3 size={24} className="text-blue-400" />
+                    <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
+                      <h3 className="text-xl font-semibold mb-6 flex items-center space-x-2">
+                        <BarChart3 size={20} className="text-blue-600" />
                         <span>Progression en Temps Réel</span>
                       </h3>
                       
-                      <div className="mb-8">
-                        <div className="flex justify-between text-lg text-white/80 mb-4 font-semibold">
-                          <span>Envoi en cours...</span>
-                          <span className="font-black text-xl">{Math.round(progress)}%</span>
+                      <div className="mb-6">
+                        <div className="flex justify-between text-sm text-gray-600 mb-2">
+                          <span className="font-medium">Progression</span>
+                          <span className="font-bold">{Math.round(progress)}%</span>
                         </div>
-                        <div className="w-full bg-gray-700/50 rounded-full h-4 overflow-hidden shadow-inner border border-white/10">
+                        <div className="w-full bg-gray-200 rounded-full h-3">
                           <div 
-                            className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-4 rounded-full transition-all duration-1000 shadow-lg relative"
+                            className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-500"
                             style={{ width: `${progress}%` }}
-                          >
-                            <div className="h-full bg-white/20 rounded-full animate-pulse"></div>
-                          </div>
+                          ></div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-6 mb-8">
+                      <div className="grid grid-cols-3 gap-4 mb-6">
                         <StatCard
                           title="Envoyés"
                           value={results.sent}
                           subtitle="Avec succès"
-                          gradient="from-emerald-600 to-green-600"
+                          color="bg-green-500"
                           icon={CheckCircle}
                         />
                         <StatCard
                           title="Échecs"
                           value={results.failed}
-                          subtitle="À retraiter"
-                          gradient="from-red-600 to-rose-600"
+                          subtitle="Erreurs"
+                          color="bg-red-500"
                           icon={AlertCircle}
                         />
                         <StatCard
                           title="Total"
                           value={results.total}
                           subtitle="Messages"
-                          gradient="from-blue-600 to-indigo-600"
+                          color="bg-blue-500"
                           icon={Send}
                         />
                       </div>
 
                       {campaignStatus === 'completed' && (
-                        <div className="p-6 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl border border-green-500/30 flex items-center shadow-2xl backdrop-blur-xl">
-                          <CheckCircle className="text-green-400 mr-4 flex-shrink-0" size={32} />
+                        <div className="p-4 bg-green-50 rounded-xl border border-green-200 flex items-center">
+                          <CheckCircle className="text-green-600 mr-3 flex-shrink-0" size={24} />
                           <div>
-                            <div className="text-green-300 font-bold text-xl">Campagne terminée avec succès !</div>
-                            <div className="text-green-400 text-lg font-medium">Tous les messages ont été traités</div>
+                            <div className="text-green-800 font-semibold">Campagne terminée avec succès !</div>
+                            <div className="text-green-600 text-sm">Tous les messages ont été traités</div>
                           </div>
                         </div>
                       )}
 
                       {results.errors.length > 0 && (
-                        <div className="mt-6 p-6 bg-gradient-to-r from-red-500/20 to-rose-500/20 rounded-2xl border border-red-500/30 backdrop-blur-xl">
-                          <h4 className="font-bold text-red-300 mb-4 text-lg">Erreurs rencontrées :</h4>
-                          <div className="space-y-2 max-h-40 overflow-y-auto">
+                        <div className="mt-4 p-4 bg-red-50 rounded-xl border border-red-200">
+                          <h4 className="font-semibold text-red-800 mb-2">Erreurs rencontrées :</h4>
+                          <div className="space-y-1 max-h-32 overflow-y-auto">
                             {results.errors.map((error, index) => (
-                              <div key={index} className="text-red-200 font-medium">
-                                <span className="font-bold">{error.contact}:</span> {error.error}
+                              <div key={index} className="text-sm text-red-700">
+                                <span className="font-medium">{error.contact}:</span> {error.error}
                               </div>
                             ))}
                           </div>
@@ -814,93 +816,94 @@ const SMSCampaignSystem: React.FC = () => {
 
           {/* Results Tab */}
           {activeTab === 'results' && (
-            <div className="p-10">
-              <div className="mb-10">
-                <h2 className="text-4xl font-black bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-3">
+            <div className="p-6 sm:p-8">
+              <div className="mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                   Résultats de Campagne
                 </h2>
-                <p className="text-white/60 text-lg">Analysez les performances de votre campagne SMS</p>
+                <p className="text-gray-600">Analysez les performances de votre campagne SMS</p>
               </div>
               
               {campaignStatus === 'idle' ? (
-                <div className="text-center py-20">
-                  <div className="relative inline-block mb-8">
-                    <BarChart3 className="mx-auto h-20 w-20 text-white/30" />
-                    <div className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-lg">
-                      <Play size={16} className="text-white" />
-                    </div>
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6 mx-auto">
+                    <BarChart3 className="h-10 w-10 text-gray-400" />
                   </div>
-                  <h3 className="text-2xl font-bold text-white mb-4">Aucune campagne lancée</h3>
-                  <p className="text-white/60 max-w-md mx-auto text-lg">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Aucune campagne lancée</h3>
+                  <p className="text-gray-600 max-w-md mx-auto">
                     Les résultats et analytics apparaîtront ici après le lancement de votre première campagne
                   </p>
                 </div>
               ) : (
-                <div className="space-y-10">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div className="space-y-8">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard
                       title="Messages Total"
                       value={results.total}
                       subtitle="Campagne complète"
-                      gradient="from-blue-600 via-indigo-600 to-purple-600"
+                      color="bg-blue-500"
                       icon={MessageSquare}
+                      trend={12}
                     />
                     <StatCard
                       title="Envoyés"
                       value={results.sent}
                       subtitle="Avec succès"
-                      gradient="from-emerald-600 via-green-600 to-teal-600"
+                      color="bg-green-500"
                       icon={CheckCircle}
+                      trend={8}
                     />
                     <StatCard
                       title="Échecs"
                       value={results.failed}
                       subtitle="À retraiter"
-                      gradient="from-red-600 via-rose-600 to-pink-600"
+                      color="bg-red-500"
                       icon={AlertCircle}
+                      trend={-2}
                     />
                     <StatCard
                       title="Taux de Succès"
                       value={`${results.total > 0 ? Math.round((results.sent / results.total) * 100) : 0}%`}
                       subtitle="Performance"
-                      gradient="from-purple-600 via-violet-600 to-indigo-600"
+                      color="bg-purple-500"
                       icon={TrendingUp}
+                      trend={5}
                     />
                   </div>
 
-                  <div className="bg-black/30 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden">
-                    <div className="p-8 border-b border-white/10 bg-gradient-to-r from-gray-800/50 to-gray-700/50">
-                      <h3 className="text-2xl font-bold text-white flex items-center space-x-3">
-                        <FileText size={24} className="text-blue-400" />
+                  <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden">
+                    <div className="p-6 border-b border-gray-200 bg-white">
+                      <h3 className="text-xl font-semibold text-gray-800 flex items-center space-x-2">
+                        <FileText size={20} className="text-blue-600" />
                         <span>Détails de la Campagne</span>
                       </h3>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="bg-gray-800/30">
-                            <th className="px-8 py-6 text-left text-sm font-bold text-white uppercase tracking-wider">Contact</th>
-                            <th className="px-8 py-6 text-left text-sm font-bold text-white uppercase tracking-wider">Téléphone</th>
-                            <th className="px-8 py-6 text-left text-sm font-bold text-white uppercase tracking-wider">Statut</th>
-                            <th className="px-8 py-6 text-left text-sm font-bold text-white uppercase tracking-wider">Heure d'envoi</th>
+                          <tr className="bg-gray-100">
+                            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Contact</th>
+                            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Téléphone</th>
+                            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Statut</th>
+                            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Heure</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/10">
+                        <tbody className="bg-white divide-y divide-gray-200">
                           {contacts.map((contact) => {
                             const nameField = csvHeaders.find(h => h.includes('nom') || h.includes('name')) || csvHeaders[0] || 'nom';
                             const phoneField = csvHeaders.find(h => h.includes('telephone') || h.includes('phone') || h.includes('tel') || h.includes('mobile')) || 'telephone';
                             
                             return (
-                              <tr key={contact.id} className="hover:bg-white/5 transition-all duration-300">
-                                <td className="px-8 py-6 text-lg font-semibold text-white">{String(contact[nameField]) || 'N/A'}</td>
-                                <td className="px-8 py-6 text-white/80 font-mono">{String(contact[phoneField]) || 'N/A'}</td>
-                                <td className="px-8 py-6">
-                                  <span className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-bold bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-300 border border-green-500/30 shadow-lg">
-                                    <CheckCircle size={16} className="mr-2" />
+                              <tr key={contact.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{String(contact[nameField]) || 'N/A'}</td>
+                                <td className="px-6 py-4 text-sm text-gray-600 font-mono">{String(contact[phoneField]) || 'N/A'}</td>
+                                <td className="px-6 py-4">
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <CheckCircle size={12} className="mr-1" />
                                     Envoyé
                                   </span>
                                 </td>
-                                <td className="px-8 py-6 text-white/60 font-mono text-lg">
+                                <td className="px-6 py-4 text-sm text-gray-500 font-mono">
                                   {new Date().toLocaleTimeString('fr-FR')}
                                 </td>
                               </tr>
@@ -916,17 +919,6 @@ const SMSCampaignSystem: React.FC = () => {
           )}
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          33% { transform: translateY(-10px) rotate(1deg); }
-          66% { transform: translateY(5px) rotate(-1deg); }
-        }
-        .animate-float {
-          animation: float 20s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };
