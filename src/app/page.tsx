@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Upload, 
   MessageSquare, 
@@ -10,27 +10,21 @@ import {
   FileText, 
   CheckCircle, 
   AlertCircle, 
-  // Download,
   Plus,
   Trash2,
   Edit3,
-  // Play,
-  // Pause,
   BarChart3,
   Sparkles,
   Zap,
   Target,
   Clock,
   TrendingUp,
-  // Shield,
-  // Globe,
-  // Wifi,
   Settings,
-  // ArrowRight,
-  // Phone,
-  // User,
-  // Calendar,
-  // Hash
+  Phone,
+  PhoneOff,
+  Mic,
+  MicOff,
+  Activity
 } from 'lucide-react';
 
 // TypeScript interfaces
@@ -46,8 +40,15 @@ interface CampaignResults {
   errors: Array<{ contact: string; error: string }>;
 }
 
+interface CallResult {
+  duration: number;
+  status: 'completed' | 'failed' | 'no-answer';
+  transcript?: string;
+  sentiment?: 'positive' | 'neutral' | 'negative';
+}
+
 type CampaignStatus = 'idle' | 'running' | 'paused' | 'completed';
-type TabType = 'contacts' | 'template' | 'preview' | 'campaign' | 'results';
+type TabType = 'contacts' | 'template' | 'preview' | 'campaign' | 'results' | 'voice';
 
 interface TabButtonProps {
   id: TabType;
@@ -59,6 +60,483 @@ interface TabButtonProps {
   description?: string;
 }
 
+interface VoiceCallProps {
+  contact: Contact;
+  template: string;
+  onCallComplete?: (result: CallResult) => void;
+}
+
+interface VoiceCampaignState {
+  status: 'idle' | 'running' | 'paused' | 'completed';
+  currentIndex: number;
+  results: Map<number, CallResult>;
+}
+
+// Validation utilities
+const BLOCKED_EXPEDITEUR_TERMS = [
+  'BNP', 'NICKEL', 'ALERT', 'ALERTE', 'URGENT', 'BANQUE', 'BANK',
+  'CIC', 'LCL', 'BNPP', 'HSBC', 'CREDIT', 'SOCIETE', 'CAISSE',
+  'BRED', 'BOURSORAMA', 'FORTUNEO', 'REVOLUT', 'N26', 'ORANGE',
+  'PAYPAL', 'LYDIA', 'PAYLIB'
+];
+
+const BLOCKED_MESSAGE_TERMS = [
+  'paiement', 'payment', 'euro', 'euros', 'argent', 'money',
+  'virement', 'carte', 'card', 'credit', 'debit', 'compte',
+  'account', 'solde', 'balance', 'remboursement', 'refund',
+  'frais', 'fees', 'taxe', 'tax', 'facture', 'invoice',
+  'acheter', 'buy', 'payer', 'pay', 'prix', 'price',
+  'gratuit', 'free', 'offre', 'offer', 'promo', 'reduction',
+  'cash', 'espece', 'cheque', 'bitcoin', 'crypto'
+];
+
+const MONEY_SYMBOLS = ['€', '$', '£', '¥', '₹', '₽', '¢', '₿'];
+
+// Validation functions
+const validateExpediteur = (value: string): string => {
+  // Remove any non-alphanumeric characters
+  let cleaned = value.replace(/[^a-zA-Z0-9]/g, '');
+  
+  // Limit to 11 characters
+  cleaned = cleaned.slice(0, 11);
+  
+  // Check against blocked terms
+  const upperCleaned = cleaned.toUpperCase();
+  for (const blocked of BLOCKED_EXPEDITEUR_TERMS) {
+    if (upperCleaned.includes(blocked)) {
+      // Remove the blocked term
+      const regex = new RegExp(blocked, 'gi');
+      cleaned = cleaned.replace(regex, '');
+    }
+  }
+  
+  return cleaned;
+};
+
+const validateMessageTemplate = (value: string): string => {
+  // Limit to 160 characters first
+  let cleaned = value.slice(0, 160);
+  
+  // Only process if there's actual content to check
+  if (cleaned.length === 0) return cleaned;
+  
+  // Remove URLs (basic pattern) - only if found
+  if (/https?:\/\/|www\.|\.com|\.fr|\.net|\.org/i.test(cleaned)) {
+    cleaned = cleaned.replace(/https?:\/\/[^\s]+/gi, '');
+    cleaned = cleaned.replace(/www\.[^\s]+/gi, '');
+    cleaned = cleaned.replace(/[a-zA-Z0-9]+\.(com|fr|net|org|io|co)([^\s]*)?/gi, '');
+  }
+  
+  // Remove phone numbers (various formats) - only if found
+  if (/(\+33|0)[1-9]|\+?\d{10,}|\d{2}[\s.-]?\d{2}/.test(cleaned)) {
+    cleaned = cleaned.replace(/(\+33|0)[1-9](\s?\d{2}){4}/g, ''); // French numbers
+    cleaned = cleaned.replace(/\+?\d{10,15}/g, ''); // International numbers
+    cleaned = cleaned.replace(/\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}/g, ''); // Formatted numbers
+  }
+  
+  // Remove money symbols - only if found
+  const hasMoneySymbol = MONEY_SYMBOLS.some(symbol => cleaned.includes(symbol));
+  if (hasMoneySymbol) {
+    MONEY_SYMBOLS.forEach(symbol => {
+      if (cleaned.includes(symbol)) {
+        cleaned = cleaned.replace(new RegExp(`\\${symbol}`, 'g'), '');
+      }
+    });
+  }
+  
+  // Check for blocked payment terms - only process if potentially found
+  const lowerCleaned = cleaned.toLowerCase();
+  const hasBlockedTerms = BLOCKED_MESSAGE_TERMS.some(term => 
+    lowerCleaned.includes(term.toLowerCase())
+  );
+  
+  if (hasBlockedTerms) {
+    for (const blocked of BLOCKED_MESSAGE_TERMS) {
+      if (lowerCleaned.includes(blocked.toLowerCase())) {
+        // Use a more careful regex that preserves spaces
+        const regex = new RegExp(`(^|\\s)${blocked}(\\s|$)`, 'gi');
+        cleaned = cleaned.replace(regex, '$1$2');
+      }
+    }
+    // Only clean up multiple spaces if we actually removed something
+    cleaned = cleaned.replace(/\s{2,}/g, ' ');
+  }
+  
+  // Don't trim unless necessary - preserve user's spaces
+  if (cleaned.startsWith(' ') || cleaned.endsWith(' ')) {
+    // Only trim if there are multiple spaces at start/end
+    if (cleaned.match(/^\s{2,}/) || cleaned.match(/\s{2,}$/)) {
+      cleaned = cleaned.trim();
+    }
+  }
+  
+  return cleaned;
+};
+
+// VAPI API Response Types
+// interface VAPICallResponse {
+//   id: string;
+//   status: 'queued' | 'ringing' | 'in-progress' | 'ended';
+//   endedReason?: 'hangup' | 'error' | 'timeout' | 'other';
+//   duration?: number;
+//   transcript?: Array<{
+//     role: 'system' | 'assistant' | 'user';
+//     content: string;
+//   }>;
+// }
+
+interface VAPITranscriptMessage {
+  role: 'system' | 'assistant' | 'user';
+  content: string;
+}
+
+declare global {
+  interface Window {
+    vapiPollInterval?: NodeJS.Timeout;
+    fs: {
+      readFile: (filename: string, options?: { encoding?: string }) => Promise<Uint8Array | string>;
+    };
+  }
+}
+
+// Voice Call Component with Real VAPI
+const VoiceCallComponent: React.FC<VoiceCallProps> = ({ contact, template, onCallComplete }) => {
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [transcript, setTranscript] = useState<Array<{text: string, speaker: string}>>([]);
+  const [callStatus, setCallStatus] = useState<'idle' | 'connecting' | 'active' | 'ended'>('idle');
+  const [audioLevel ] = useState(0);
+
+  // Get phone number from contact
+  const getPhoneNumber = () => {
+    const phoneFields = ['telephone', 'phone', 'tel', 'mobile'];
+    for (const field of phoneFields) {
+      if (contact[field]) return String(contact[field]);
+    }
+    return '';
+  };
+
+  // Generate personalized script from template
+  const generateScript = () => {
+    let script = template;
+    Object.keys(contact).forEach(key => {
+      if (key !== 'id') {
+        const regex = new RegExp(`{${key}}`, 'g');
+        script = script.replace(regex, String(contact[key]) || '');
+      }
+    });
+    return script;
+  };
+
+  // Simple sentiment analysis
+  const analyzeSentiment = (transcript: Array<{text: string, speaker: string}>): 'positive' | 'neutral' | 'negative' => {
+    const userMessages = transcript.filter(t => t.speaker === 'user').map(t => t.text).join(' ').toLowerCase();
+    
+    const positiveWords = ['oui', 'bien', 'parfait', 'merci', 'd\'accord', 'super', 'excellent'];
+    const negativeWords = ['non', 'pas', 'jamais', 'problème', 'difficile', 'mauvais'];
+    
+    const positiveCount = positiveWords.filter(word => userMessages.includes(word)).length;
+    const negativeCount = negativeWords.filter(word => userMessages.includes(word)).length;
+    
+    if (positiveCount > negativeCount) return 'positive';
+    if (negativeCount > positiveCount) return 'negative';
+    return 'neutral';
+  };
+
+  // Start voice call with real VAPI phone calling
+  const startCall = async () => {
+    const phoneNumber = getPhoneNumber();
+    if (!phoneNumber) {
+      alert('Numéro de téléphone manquant');
+      return;
+    }
+
+    setCallStatus('connecting');
+    
+    try {
+      // Make an actual phone call using VAPI
+      const response = await fetch('https://api.vapi.ai/call/phone', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_VAPI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber: phoneNumber,
+          assistantId: process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID, // You'll need to create an assistant in VAPI dashboard
+          // OR use inline assistant configuration:
+          assistant: {
+            transcriber: {
+              provider: 'deepgram',
+              model: 'nova-2',
+              language: 'fr',
+            },
+            model: {
+              provider: 'openai',
+              model: 'gpt-4',
+              messages: [
+                {
+                  role: 'system',
+                  content: `You are a professional assistant making calls in French. Here's your script: ${generateScript()}. Be polite, professional, and helpful. Adapt naturally to the conversation while keeping the main message.`
+                }
+              ],
+              temperature: 0.7,
+            },
+            voice: {
+              provider: '11labs',
+              voiceId: 'rachel',
+              stability: 0.5,
+              similarityBoost: 0.75,
+            },
+            firstMessage: generateScript(),
+          },
+          // Phone number configuration
+          phoneNumberId: process.env.NEXT_PUBLIC_VAPI_PHONE_NUMBER_ID, // Your VAPI phone number ID
+          customer: {
+            number: phoneNumber,
+            name: contact.nom || 'Client',
+          },
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to start call');
+      }
+
+      console.log('Call initiated:', data);
+      setIsCallActive(true);
+      setCallStatus('active');
+      
+      // Store the call ID for tracking
+      const callId = data.id;
+      
+      // Poll for call status updates
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusResponse = await fetch(`https://api.vapi.ai/call/${callId}`, {
+            headers: {
+              'Authorization': `Bearer ${process.env.NEXT_PUBLIC_VAPI_API_KEY}`,
+            },
+          });
+          
+          const callData = await statusResponse.json();
+          console.log('Call status:', callData);
+          
+          // Update transcript if available
+          if (callData.transcript) {
+            const messages = callData.transcript.filter((msg: VAPITranscriptMessage) => msg.role !== 'system');
+            setTranscript(messages.map((msg: VAPITranscriptMessage) => ({
+              text: msg.content,
+              speaker: msg.role === 'assistant' ? 'assistant' : 'user'
+            })));
+          }
+          
+          // Check if call ended
+          if (callData.status === 'ended' || callData.endedReason) {
+            clearInterval(pollInterval);
+            setIsCallActive(false);
+            setCallStatus('ended');
+            
+            if (onCallComplete) {
+              onCallComplete({
+                duration: callData.duration || callDuration,
+                status: callData.endedReason === 'hangup' ? 'completed' : 'failed',
+                transcript: callData.transcript?.map((t: VAPITranscriptMessage) => t.content).join(' ') || '',
+                sentiment: analyzeSentiment(transcript),
+              });
+            }
+          }
+          
+          // Update duration
+          if (callData.duration) {
+            setCallDuration(Math.floor(callData.duration / 1000));
+          }
+        } catch (error) {
+          console.error('Error polling call status:', error);
+        }
+      }, 2000); // Poll every 2 seconds
+      
+      // Store interval ID for cleanup
+      window.vapiPollInterval = pollInterval;
+
+      
+    } catch (error) {
+      console.error('Failed to start call:', error);
+      setCallStatus('ended');
+      setIsCallActive(false);
+      alert(`Erreur lors du démarrage de l'appel: ${(error as Error).message}`);
+    }
+  };
+
+  // End call
+  const endCall = async () => {
+    // Clear polling interval
+    if (window.vapiPollInterval) {
+      clearInterval(window.vapiPollInterval);
+    }
+    
+    // Note: VAPI doesn't provide a direct way to end calls via API
+    // The call will end naturally when the user hangs up
+    setIsCallActive(false);
+    setCallStatus('ended');
+  };
+
+  // Toggle mute
+  const toggleMute = () => {
+    // Note: Muting is not available for phone calls via API
+    // This would need to be handled on the phone system side
+    if (isCallActive) {
+      setIsMuted(!isMuted);
+      alert('Le contrôle du micro n\'est pas disponible pour les appels téléphoniques');
+    }
+  };
+
+  // Update call duration
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isCallActive) {
+      interval = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isCallActive]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (window.vapiPollInterval) {
+        clearInterval(window.vapiPollInterval);
+      }
+    };
+  }, []);
+
+  // Format duration
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 mb-1">Appel Vocal AI</h3>
+          <p className="text-gray-600 text-sm">
+            {contact.nom || 'Contact'} - {getPhoneNumber()}
+          </p>
+        </div>
+        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+          callStatus === 'active' ? 'bg-green-100 text-green-800' :
+          callStatus === 'connecting' ? 'bg-yellow-100 text-yellow-800' :
+          callStatus === 'ended' ? 'bg-gray-100 text-gray-800' :
+          'bg-blue-100 text-blue-800'
+        }`}>
+          {callStatus === 'active' ? 'En cours' :
+           callStatus === 'connecting' ? 'Connexion...' :
+           callStatus === 'ended' ? 'Terminé' :
+           'Prêt'}
+        </div>
+      </div>
+
+      {/* Call Controls */}
+      <div className="flex items-center justify-center space-x-4 mb-6">
+        {!isCallActive ? (
+          <button
+
+            onClick={startCall}
+            className="flex items-center space-x-3 bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+          >
+            <Phone size={24} />
+            <span>Démarrer l&apos;appel</span>
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={toggleMute}
+              className={`p-4 rounded-xl transition-all duration-200 ${
+                isMuted 
+                  ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
+            </button>
+            <button
+              onClick={endCall}
+              className="flex items-center space-x-3 bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              <PhoneOff size={24} />
+              <span>Terminer</span>
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Call Stats */}
+      {isCallActive && (
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="bg-gray-50 rounded-xl p-4 text-center">
+            <Clock size={20} className="text-blue-600 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-gray-900">{formatDuration(callDuration)}</div>
+            <div className="text-sm text-gray-600">Durée</div>
+          </div>
+          <div className="bg-gray-50 rounded-xl p-4 text-center">
+            <Activity size={20} className="text-green-600 mx-auto mb-2" />
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden mt-4">
+              <div 
+                className="h-full bg-green-500 transition-all duration-100"
+                style={{ width: `${audioLevel}%` }}
+              />
+            </div>
+            <div className="text-sm text-gray-600 mt-2">Niveau audio</div>
+          </div>
+        </div>
+      )}
+
+      {/* Transcript */}
+      {transcript.length > 0 && (
+        <div className="bg-gray-50 rounded-xl p-4 max-h-64 overflow-y-auto">
+          <h4 className="font-semibold text-gray-800 mb-3 flex items-center space-x-2">
+            <Activity size={16} />
+            <span>Transcription en direct</span>
+          </h4>
+          <div className="space-y-2">
+            {transcript.map((entry, index) => (
+              <div 
+                key={index} 
+                className={`p-3 rounded-lg ${
+                  entry.speaker === 'assistant' 
+                    ? 'bg-blue-100 text-blue-800 ml-8' 
+                    : 'bg-white text-gray-800 mr-8'
+                }`}
+              >
+                <div className="text-xs font-medium mb-1">
+                  {entry.speaker === 'assistant' ? '🤖 Assistant' : '👤 Client'}
+                </div>
+                <div className="text-sm">{entry.text}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Script Preview */}
+      {!isCallActive && (
+        <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+          <h4 className="font-semibold text-blue-800 mb-2">Script personnalisé :</h4>
+          <p className="text-sm text-blue-700">{generateScript()}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Main SMS Campaign System Component
 const SMSCampaignSystem: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('contacts');
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -70,6 +548,66 @@ const SMSCampaignSystem: React.FC = () => {
   const [results, setResults] = useState<CampaignResults>({ sent: 0, failed: 0, total: 0, errors: [] });
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string>('');
+  const [voiceCallResults, setVoiceCallResults] = useState<Map<number, CallResult>>(new Map());
+  const [voiceCampaign, setVoiceCampaign] = useState<VoiceCampaignState>({
+    status: 'idle',
+    currentIndex: 0,
+    results: new Map()
+  });
+  const [callDelay, setCallDelay] = useState<number>(5);
+  const [expediteurError, setExpediteurError] = useState<string>('');
+  const [templateError, setTemplateError] = useState<string>('');
+
+  // Handle Expediteur change with validation
+  const handleExpediteurChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    const validatedValue = validateExpediteur(rawValue);
+    
+    setExpediteur(validatedValue);
+    
+    // Set error message if validation removed content
+    if (rawValue !== validatedValue && rawValue.length > 0) {
+      const upperValue = rawValue.toUpperCase();
+      if (BLOCKED_EXPEDITEUR_TERMS.some(term => upperValue.includes(term))) {
+        setExpediteurError('Nom interdit (banque ou alerte)');
+      } else if (rawValue.match(/[^a-zA-Z0-9]/)) {
+        setExpediteurError('Lettres et chiffres uniquement');
+      } else if (rawValue.length > 11) {
+        setExpediteurError('Maximum 11 caractères');
+      }
+      
+      // Clear error after 3 seconds
+      setTimeout(() => setExpediteurError(''), 3000);
+    }
+  };
+
+  // Handle Template change with validation
+  const handleTemplateChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const rawValue = e.target.value;
+    const validatedValue = validateMessageTemplate(rawValue);
+    
+    setTemplate(validatedValue);
+    
+    // Set error message if validation removed content
+    if (rawValue !== validatedValue && rawValue.length > 0) {
+      const lowerValue = rawValue.toLowerCase();
+      
+      if (rawValue.match(/https?:\/\/|www\.|\.com|\.fr/i)) {
+        setTemplateError('Les URLs ne sont pas autorisées');
+      } else if (rawValue.match(/(\+33|0)[1-9](\s?\d{2}){4}|\+?\d{10,15}/)) {
+        setTemplateError('Les numéros de téléphone ne sont pas autorisés');
+      } else if (MONEY_SYMBOLS.some(symbol => rawValue.includes(symbol))) {
+        setTemplateError('Les symboles monétaires ne sont pas autorisés');
+      } else if (BLOCKED_MESSAGE_TERMS.some(term => lowerValue.includes(term.toLowerCase()))) {
+        setTemplateError('Termes de paiement interdits');
+      } else if (rawValue.length > 160) {
+        setTemplateError('Maximum 160 caractères');
+      }
+      
+      // Clear error after 3 seconds
+      setTimeout(() => setTemplateError(''), 3000);
+    }
+  };
 
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = event.target.files?.[0];
@@ -228,6 +766,91 @@ const SMSCampaignSystem: React.FC = () => {
     setCampaignStatus('completed');
   };
 
+  const handleVoiceCallComplete = (contactId: number, result: CallResult) => {
+    setVoiceCallResults(prev => new Map(prev).set(contactId, result));
+    setVoiceCampaign(prev => ({
+      ...prev,
+      results: new Map(prev.results).set(contactId, result)
+    }));
+  };
+
+  // Launch Voice Campaign
+  const launchVoiceCampaign = async () => {
+    if (contacts.length === 0 || !template) {
+      alert('Veuillez ajouter des contacts et créer un modèle de message');
+      return;
+    }
+
+    if (!process.env.NEXT_PUBLIC_VAPI_API_KEY) {
+      alert('Clé API VAPI manquante. Veuillez configurer NEXT_PUBLIC_VAPI_API_KEY dans votre fichier .env.local');
+      return;
+    }
+
+    if (!process.env.NEXT_PUBLIC_VAPI_PHONE_NUMBER_ID) {
+      alert('ID du numéro de téléphone VAPI manquant. Veuillez configurer NEXT_PUBLIC_VAPI_PHONE_NUMBER_ID dans votre fichier .env.local');
+      return;
+    }
+
+    setVoiceCampaign({
+      status: 'running',
+      currentIndex: 0,
+      results: new Map()
+    });
+
+    // Process contacts one by one
+    for (let i = 0; i < contacts.length; i++) {
+      if (voiceCampaign.status === 'paused') {
+        break;
+      }
+
+      const contact = contacts[i];
+      setVoiceCampaign(prev => ({ ...prev, currentIndex: i }));
+
+      try {
+        // Create a promise that resolves when the call is complete
+        await new Promise<void>((resolve) => {
+          const checkCallComplete = setInterval(() => {
+            if (voiceCampaign.results.has(contact.id)) {
+              clearInterval(checkCallComplete);
+              resolve();
+            }
+          }, 1000);
+
+          // Timeout after 5 minutes
+          setTimeout(() => {
+            clearInterval(checkCallComplete);
+            resolve();
+          }, 300000);
+        });
+
+        // Wait between calls
+        if (i < contacts.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, callDelay * 1000));
+        }
+      } catch (error) {
+        console.error('Error processing contact:', error);
+        handleVoiceCallComplete(contact.id, {
+          duration: 0,
+          status: 'failed',
+          transcript: '',
+          sentiment: 'neutral'
+        });
+      }
+    }
+
+    setVoiceCampaign(prev => ({ ...prev, status: 'completed' }));
+  };
+
+  const pauseVoiceCampaign = () => {
+    setVoiceCampaign(prev => ({ ...prev, status: 'paused' }));
+  };
+
+  const resumeVoiceCampaign = () => {
+    setVoiceCampaign(prev => ({ ...prev, status: 'running' }));
+    // Continue from where we left off
+    launchVoiceCampaign();
+  };
+
   const TabButton: React.FC<TabButtonProps> = ({ id, label, icon: Icon, isActive, onClick, badge, description }) => (
     <button
       onClick={() => onClick(id)}
@@ -299,7 +922,7 @@ const SMSCampaignSystem: React.FC = () => {
                 </h1>
                 <p className="text-gray-600 flex items-center space-x-2 text-sm sm:text-base">
                   <Sparkles size={16} className="text-blue-500" />
-                  <span>Plateforme de campagnes SMS professionnelle</span>
+                  <span>Plateforme de campagnes SMS & Voice AI</span>
                 </p>
               </div>
             </div>
@@ -327,7 +950,7 @@ const SMSCampaignSystem: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Navigation Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <TabButton 
             id="contacts" 
             label="Contacts" 
@@ -370,6 +993,14 @@ const SMSCampaignSystem: React.FC = () => {
             onClick={setActiveTab}
             badge={results.sent}
             description="Analyser les données"
+          />
+          <TabButton 
+            id="voice" 
+            label="Appels Vocaux" 
+            icon={Phone} 
+            isActive={activeTab === 'voice'}
+            onClick={setActiveTab}
+            description="Campagne vocale AI"
           />
         </div>
 
@@ -538,27 +1169,57 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
                     <label className="block text-sm font-semibold text-gray-700 mb-3">
                       Expéditeur (obligatoire)
                     </label>
-                    <input
-                      value={expediteur}
-                      onChange={(e) => setExpediteur(e.target.value)}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 bg-white"
-                      placeholder="Nom de l'expéditeur"
-                    />
+                    <div className="relative">
+                      <input
+                        value={expediteur}
+                        onChange={handleExpediteurChange}
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 bg-white"
+                        placeholder="Nom de l'expéditeur"
+                        maxLength={11}
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                        {expediteur.length}/11
+                      </div>
+                    </div>
+                    {expediteurError && (
+                      <p className="mt-2 text-sm text-red-600 flex items-center">
+                        <AlertCircle size={14} className="mr-1" />
+                        {expediteurError}
+                      </p>
+                    )}
+                    <p className="mt-2 text-xs text-gray-500">
+                      Lettres et chiffres uniquement, max 11 caractères
+                    </p>
                   </div>
                   
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-3">
                       Message Template
                     </label>
-                    <textarea
-                      value={template}
-                      onChange={(e) => setTemplate(e.target.value)}
-                      className="w-full h-64 border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none text-gray-900 bg-white"
-                      placeholder={csvHeaders.length > 0 
-                        ? `Bonjour {${csvHeaders[0] || 'nom'}}, votre message personnalisé ici...`
-                        : "Importez d'abord un CSV pour voir les variables disponibles"
-                      }
-                    />
+                    <div className="relative">
+                      <textarea
+                        value={template}
+                        onChange={handleTemplateChange}
+                        className="w-full h-64 border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none text-gray-900 bg-white"
+                        placeholder={csvHeaders.length > 0 
+                          ? `Bonjour {${csvHeaders[0] || 'nom'}}, votre message personnalisé ici...`
+                          : "Importez d'abord un CSV pour voir les variables disponibles"
+                        }
+                        maxLength={160}
+                      />
+                      <div className="absolute right-3 bottom-3 text-xs text-gray-500">
+                        {template.length}/160
+                      </div>
+                    </div>
+                    {templateError && (
+                      <p className="mt-2 text-sm text-red-600 flex items-center">
+                        <AlertCircle size={14} className="mr-1" />
+                        {templateError}
+                      </p>
+                    )}
+                    <p className="mt-2 text-xs text-gray-500">
+                      Pas d&apos;URLs, numéros de téléphone, ou termes de paiement
+                    </p>
                     
                     {csvHeaders.length > 0 && (
                       <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
@@ -617,6 +1278,7 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
               </div>
             </div>
           )}
+
 
           {/* Preview Tab */}
           {activeTab === 'preview' && (
@@ -911,6 +1573,252 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
                           })}
                         </tbody>
                       </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Voice Tab */}
+          {activeTab === 'voice' && (
+            <div className="p-6 sm:p-8">
+              <div className="mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+                  Campagne d&apos;Appels Vocaux AI
+                </h2>
+                <p className="text-gray-600">Lancez des appels automatisés avec l&apos;intelligence artificielle</p>
+              </div>
+
+              {/* Voice Campaign Stats */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 mb-8 border border-purple-200">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+                    <Phone className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-gray-900">{contacts.length}</div>
+                    <div className="text-sm text-gray-600">Appels disponibles</div>
+                  </div>
+                  <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+                    <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-gray-900">{voiceCallResults.size}</div>
+                    <div className="text-sm text-gray-600">Appels réussis</div>
+                  </div>
+                  <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+                    <Clock className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-gray-900">
+                      {voiceCallResults.size > 0 
+                        ? Math.round(Array.from(voiceCallResults.values()).reduce((acc, r) => acc + r.duration, 0) / voiceCallResults.size)
+                        : 0}s
+                    </div>
+                    <div className="text-sm text-gray-600">Durée moyenne</div>
+                  </div>
+                  <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+                    <TrendingUp className="w-8 h-8 text-orange-600 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-gray-900">
+                      {voiceCallResults.size > 0 
+                        ? Math.round(Array.from(voiceCallResults.values()).filter(r => r.status === 'completed').length / voiceCallResults.size * 100)
+                        : 0}%
+                    </div>
+                    <div className="text-sm text-gray-600">Taux de conversion</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Voice Settings */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div className="bg-white rounded-2xl p-6 border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                    <Settings size={20} className="text-gray-600" />
+                    <span>Configuration Vocale</span>
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Voix de l&apos;assistant
+                      </label>
+                      <select className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option>Rachel - Voix française professionnelle</option>
+                        <option>Antoine - Voix masculine française</option>
+                        <option>Sophie - Voix féminine douce</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Vitesse de parole
+                      </label>
+                      <input 
+                        type="range" 
+                        min="0.5" 
+                        max="1.5" 
+                        step="0.1" 
+                        defaultValue="1" 
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Délai entre appels (secondes)
+                      </label>
+                      <input 
+                        type="number" 
+                        value={callDelay}
+                        onChange={(e) => setCallDelay(Number(e.target.value))}
+                        min="1" 
+                        max="60"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl p-6 border border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                    <Sparkles size={20} className="text-purple-600" />
+                    <span>Intelligence Artificielle</span>
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700">Détection d&apos;intention</span>
+                      <input type="checkbox" defaultChecked className="toggle" />
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700">Réponses contextuelles</span>
+                      <input type="checkbox" defaultChecked className="toggle" />
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700">Analyse de sentiment</span>
+                      <input type="checkbox" defaultChecked className="toggle" />
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700">Prise de rendez-vous</span>
+                      <input type="checkbox" className="toggle" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Voice Campaign Progress */}
+              {voiceCampaign.status !== 'idle' && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 mb-8">
+                  <h3 className="text-lg font-semibold text-yellow-800 mb-4 flex items-center space-x-2">
+                    <Activity size={20} />
+                    <span>Campagne Vocale en Cours</span>
+                  </h3>
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm text-gray-600 mb-2">
+                      <span className="font-medium">Progression</span>
+                      <span className="font-bold">
+                        {voiceCampaign.currentIndex + 1} / {contacts.length}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div 
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500"
+                        style={{ width: `${((voiceCampaign.currentIndex + 1) / contacts.length) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  {voiceCampaign.status === 'running' && (
+                    <button
+                      onClick={pauseVoiceCampaign}
+                      className="flex items-center space-x-2 bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded-lg transition-all duration-200"
+                    >
+                      <AlertCircle size={16} />
+                      <span>Mettre en pause</span>
+                    </button>
+                  )}
+                  {voiceCampaign.status === 'paused' && (
+                    <button
+                      onClick={resumeVoiceCampaign}
+                      className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition-all duration-200"
+                    >
+                      <Phone size={16} />
+                      <span>Reprendre</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Individual Voice Calls */}
+              {contacts.length > 0 && template && (
+                <div className="space-y-4 mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Appels Individuels</h3>
+                  {contacts.slice(0, 3).map(contact => (
+                    <VoiceCallComponent
+                      key={contact.id}
+                      contact={contact}
+                      template={template}
+                      onCallComplete={(result) => handleVoiceCallComplete(contact.id, result)}
+                    />
+                  ))}
+                  {contacts.length > 3 && (
+                    <div className="text-center py-4 text-gray-600">
+                      <p>Et {contacts.length - 3} autres contacts...</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Launch Voice Campaign */}
+              <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-8 text-white text-center">
+                <h3 className="text-2xl font-bold mb-4">Prêt à lancer votre campagne vocale AI ?</h3>
+                <p className="mb-6 text-purple-100">
+                  {contacts.length > 0 
+                    ? `${contacts.length} contacts seront appelés avec votre message personnalisé`
+                    : "Importez d'abord des contacts pour démarrer"
+                  }
+                </p>
+                <button
+                  onClick={launchVoiceCampaign}
+                  disabled={contacts.length === 0 || !template || voiceCampaign.status === 'running'}
+                  className={`inline-flex items-center space-x-3 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 ${
+                    contacts.length === 0 || !template || voiceCampaign.status === 'running'
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-white text-purple-600 hover:bg-purple-50 shadow-lg hover:shadow-xl'
+                  }`}
+                >
+                  <Phone size={24} />
+                  <span>
+                    {voiceCampaign.status === 'running' 
+                      ? 'Campagne en cours...' 
+                      : 'Démarrer la Campagne Vocale'
+                    }
+                  </span>
+                </button>
+                
+                {/* Debug Info */}
+                <div className="mt-4 text-sm text-purple-100">
+                  <p>Debug Info:</p>
+                  <p>Contacts: {contacts.length} | Template: {template ? '✓' : '✗'} | API Key: {process.env.NEXT_PUBLIC_VAPI_API_KEY ? '✓' : '✗'} | Phone ID: {process.env.NEXT_PUBLIC_VAPI_PHONE_NUMBER_ID ? '✓' : '✗'}</p>
+                  {contacts.length === 0 && <p className="text-yellow-300">→ Ajoutez des contacts</p>}
+                  {!template && <p className="text-yellow-300">→ Créez un message template</p>}
+                  {!process.env.NEXT_PUBLIC_VAPI_API_KEY && <p className="text-yellow-300">→ Configurez NEXT_PUBLIC_VAPI_API_KEY</p>}
+                  {!process.env.NEXT_PUBLIC_VAPI_PHONE_NUMBER_ID && <p className="text-yellow-300">→ Configurez NEXT_PUBLIC_VAPI_PHONE_NUMBER_ID</p>}
+                </div>
+              </div>
+
+              {/* API Configuration Warning */}
+              {!process.env.NEXT_PUBLIC_VAPI_API_KEY && (
+                <div className="mt-8 p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
+                    <div className="text-sm text-red-800">
+                      <p className="font-semibold mb-1">Configuration Requise pour les Appels Téléphoniques</p>
+                      <p className="mb-2">Pour utiliser les appels vocaux, configurez ces variables dans votre fichier .env.local :</p>
+                      <pre className="bg-red-100 p-3 rounded text-xs font-mono">
+{`NEXT_PUBLIC_VAPI_API_KEY=votre_cle_api_vapi
+NEXT_PUBLIC_VAPI_PHONE_NUMBER_ID=votre_phone_number_id
+NEXT_PUBLIC_VAPI_ASSISTANT_ID=votre_assistant_id (optionnel)`}
+                      </pre>
+                      <div className="mt-3 space-y-1">
+                        <p className="font-medium">Étapes de configuration :</p>
+                        <ol className="list-decimal list-inside space-y-1 ml-2">
+                          <li>Créez un compte sur <a href="https://vapi.ai" className="text-blue-600 underline" target="_blank" rel="noopener noreferrer">vapi.ai</a></li>
+                          <li>Configurez un numéro de téléphone (Twilio, Vonage, etc.)</li>
+                          <li>Récupérez votre API key et phone number ID</li>
+                          <li>Optionnel : Créez un assistant et récupérez son ID</li>
+                        </ol>
+                      </div>
                     </div>
                   </div>
                 </div>
