@@ -95,7 +95,7 @@ const MONEY_SYMBOLS = ['€', '$', '£', '¥', '₹', '₽', '¢', '₿'];
 // Validation functions
 const validateExpediteur = (value: string): string => {
   // Remove any non-alphanumeric characters
-  let cleaned = value.replace(/[^a-zA-Z0-9]/g, '');
+  let cleaned = value.replace(/[^a-zA-Z0-9 ]/g, '');
   
   // Limit to 11 characters
   cleaned = cleaned.slice(0, 11);
@@ -120,19 +120,10 @@ const validateMessageTemplate = (value: string): string => {
   // Only process if there's actual content to check
   if (cleaned.length === 0) return cleaned;
   
-  // Remove URLs (basic pattern) - only if found
-  if (/https?:\/\/|www\.|\.com|\.fr|\.net|\.org/i.test(cleaned)) {
-    cleaned = cleaned.replace(/https?:\/\/[^\s]+/gi, '');
-    cleaned = cleaned.replace(/www\.[^\s]+/gi, '');
-    cleaned = cleaned.replace(/[a-zA-Z0-9]+\.(com|fr|net|org|io|co)([^\s]*)?/gi, '');
-  }
+  // URLs are now ALLOWED - no URL removal
   
-  // Remove phone numbers (various formats) - only if found
-  if (/(\+33|0)[1-9]|\+?\d{10,}|\d{2}[\s.-]?\d{2}/.test(cleaned)) {
-    cleaned = cleaned.replace(/(\+33|0)[1-9](\s?\d{2}){4}/g, ''); // French numbers
-    cleaned = cleaned.replace(/\+?\d{10,15}/g, ''); // International numbers
-    cleaned = cleaned.replace(/\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}/g, ''); // Formatted numbers
-  }
+  // REMOVED: Phone number blocking - now allows phone numbers in messages
+  // This change allows you to include callback numbers or contact information
   
   // Remove money symbols - only if found
   const hasMoneySymbol = MONEY_SYMBOLS.some(symbol => cleaned.includes(symbol));
@@ -592,11 +583,8 @@ const SMSCampaignSystem: React.FC = () => {
     if (rawValue !== validatedValue && rawValue.length > 0) {
       const lowerValue = rawValue.toLowerCase();
       
-      if (rawValue.match(/https?:\/\/|www\.|\.com|\.fr/i)) {
-        setTemplateError('Les URLs ne sont pas autorisées');
-      } else if (rawValue.match(/(\+33|0)[1-9](\s?\d{2}){4}|\+?\d{10,15}/)) {
-        setTemplateError('Les numéros de téléphone ne sont pas autorisés');
-      } else if (MONEY_SYMBOLS.some(symbol => rawValue.includes(symbol))) {
+      // URLs are now allowed - removed URL error
+      if (MONEY_SYMBOLS.some(symbol => rawValue.includes(symbol))) {
         setTemplateError('Les symboles monétaires ne sont pas autorisés');
       } else if (BLOCKED_MESSAGE_TERMS.some(term => lowerValue.includes(term.toLowerCase()))) {
         setTemplateError('Termes de paiement interdits');
@@ -1218,7 +1206,7 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
                       </p>
                     )}
                     <p className="mt-2 text-xs text-gray-500">
-                      Pas d&apos;URLs, numéros de téléphone, ou termes de paiement
+                      Les URLs et numéros de téléphone sont autorisés. Pas de termes de paiement.
                     </p>
                     
                     {csvHeaders.length > 0 && (
