@@ -73,12 +73,12 @@ interface VoiceCampaignState {
 }
 
 // Validation utilities
-const BLOCKED_EXPEDITEUR_TERMS = [
-  'BNP', 'NICKEL', 'ALERT', 'ALERTE', 'URGENT', 'BANQUE', 'BANK',
-  'CIC', 'LCL', 'BNPP', 'HSBC', 'CREDIT', 'SOCIETE', 'CAISSE',
-  'BRED', 'BOURSORAMA', 'FORTUNEO', 'REVOLUT', 'N26', 'ORANGE',
-  'PAYPAL', 'LYDIA', 'PAYLIB'
-];
+// const BLOCKED_EXPEDITEUR_TERMS = [
+//   'BNP', 'NICKEL', 'ALERT', 'ALERTE', 'URGENT', 'BANQUE', 'BANK',
+//   'CIC', 'LCL', 'BNPP', 'HSBC', 'CREDIT', 'SOCIETE', 'CAISSE',
+//   'BRED', 'BOURSORAMA', 'FORTUNEO', 'REVOLUT', 'N26', 'ORANGE',
+//   'PAYPAL', 'LYDIA', 'PAYLIB'
+// ];
 
 const BLOCKED_MESSAGE_TERMS = [
   'paiement', 'payment', 'euro', 'euros', 'argent', 'money',
