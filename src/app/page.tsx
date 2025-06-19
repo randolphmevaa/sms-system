@@ -95,25 +95,25 @@ const BLOCKED_MESSAGE_TERMS = [
 const MONEY_SYMBOLS = ['€', '$', '£', '¥', '₹', '₽', '¢', '₿'];
 
 // Validation functions
-const validateExpediteur = (value: string): string => {
-  // Remove any non-alphanumeric characters
-  let cleaned = value.replace(/[^a-zA-Z0-9 ]/g, '');
+// const validateExpediteur = (value: string): string => {
+//   // Remove any non-alphanumeric characters
+//   let cleaned = value.replace(/[^a-zA-Z0-9 ]/g, '');
   
-  // Limit to 11 characters
-  cleaned = cleaned.slice(0, 11);
+//   // Limit to 11 characters
+//   cleaned = cleaned.slice(0, 11);
   
-  // Check against blocked terms
-  const upperCleaned = cleaned.toUpperCase();
-  for (const blocked of BLOCKED_EXPEDITEUR_TERMS) {
-    if (upperCleaned.includes(blocked)) {
-      // Remove the blocked term
-      const regex = new RegExp(blocked, 'gi');
-      cleaned = cleaned.replace(regex, '');
-    }
-  }
+//   // Check against blocked terms
+//   const upperCleaned = cleaned.toUpperCase();
+//   for (const blocked of BLOCKED_EXPEDITEUR_TERMS) {
+//     if (upperCleaned.includes(blocked)) {
+//       // Remove the blocked term
+//       const regex = new RegExp(blocked, 'gi');
+//       cleaned = cleaned.replace(regex, '');
+//     }
+//   }
   
-  return cleaned;
-};
+//   return cleaned;
+// };
 
 const validateMessageTemplate = (value: string): string => {
   // Limit to 160 characters first
@@ -1155,7 +1155,7 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
                       </div>
                     </div>
                     <p className="mt-2 text-xs text-gray-500">
-                      L'expéditeur est défini sur EFFY PART
+                      L&apos;expéditeur est défini sur EFFY PART
                     </p>
                   </div>
                   

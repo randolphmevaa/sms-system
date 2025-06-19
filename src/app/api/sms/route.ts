@@ -76,7 +76,7 @@ async function getAccessToken(): Promise<TokenResponse> {
 async function sendSMS(tokenData: TokenResponse, smsData: SMSRequest): Promise<SMSResponse> {
   try {
     // Build the payload, only including optional fields if they’re defined
-    const payload: Record<string, any> = {
+    const payload: Partial<SMSRequest> = {
       message_type: smsData.message_type ?? 'PRM',
       message: smsData.message,
       recipient: smsData.recipient,
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Optional: GET endpoint to test the connection
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Validate environment variables
     if (!SMS_API_EMAIL || !SMS_API_PASSWORD) {
