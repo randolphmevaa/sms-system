@@ -1,139 +1,197 @@
-// app/api/sms/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
-// Add the edge runtime directive at the top of the file
-export const runtime = 'edge';
+// Types for the SMS API
+interface SMSRequest {
+  // Pick either "MND" or "PRM" here; if you don't pass one, we'll default to "PRM"
+  message_type?: 'MND' | 'PRM';
+  message: string;
+  recipient: string[];
+  sender?: string;
+  scheduled_delivery_time?: string;
+  scheduled_delivery_timezone?: string;
+  order_id?: string;
+  returnCredits?: boolean;
+  returnRemaining?: boolean;
+  allowInvalidRecipients?: boolean;
+  encoding?: 'gsm' | 'ucs2';
+  id_landing?: number;
+  campaign_name?: string;
+  max_fragments?: number;
+  truncate?: boolean;
+  validity_period_min?: number;
+  richsms_url?: string;
+}
 
-export async function POST(request: NextRequest) {
+interface TokenResponse {
+  user_key: string;
+  access_token: string;
+}
+
+interface SMSResponse {
+  result: string;
+  order_id?: string;
+  total_sent?: number;
+  remaining_credits?: number;
+  error?: string;
+}
+
+// Store credentials in environment variables
+const SMS_API_EMAIL = process.env.SMS_API_EMAIL || '';
+const SMS_API_PASSWORD = process.env.SMS_API_PASSWORD || '';
+const SMS_API_BASE_URL = 'https://api.smsenvoi.com/API/v1.0/REST';
+
+// Helper function to get access token
+async function getAccessToken(): Promise<TokenResponse> {
+  const credentials = Buffer.from(`${SMS_API_EMAIL}:${SMS_API_PASSWORD}`).toString('base64');
+  
   try {
-    // 1) Get JSON body from client request
-    const { destinataires, message, expediteur, date } = await request.json();
-
-    // 2) Get SMS Factor token from environment
-    const token = process.env.SMS_FACTOR_TOKEN;
-
-    if (!token) {
-      console.error('Missing SMS_FACTOR_TOKEN environment variable');
-      return NextResponse.json({
-        success: false,
-        message: 'Server configuration error - missing API token'
-      }, { status: 500 });
-    }
-
-    // 3) Convert destinataires to SMS Factor format
-    // destinataires can be a string (single number) or array of numbers
-    const recipients = Array.isArray(destinataires) ? destinataires : [destinataires];
-    
-    // Create GSM recipients array with unique IDs
-    const gsmRecipients = recipients.map((number, index) => {
-      // Clean the number - remove spaces and ensure it doesn't have + prefix
-      const cleanNumber = number.toString().replace(/\s+/g, '').replace(/^\+/, '');
-      
-      return {
-        gsmsmsid: (100 + index).toString(), // Unique ID for each recipient
-        value: cleanNumber
-      };
+    const response = await fetch(`${SMS_API_BASE_URL}/token`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${credentials}`
+      }
     });
 
-    // 4) Prepare SMS Factor request body
-    const requestBody = {
-      sms: {
-        message: {
-          text: message,
-          pushtype: "alert",
-          sender: expediteur || "SMS", // Default sender if not provided
-          delay: date || "", // Empty string for immediate sending
-          unicode: 0 // 0 for normal text, 1 for unicode
-        },
-        recipients: {
-          gsm: gsmRecipients
-        }
-      }
+    if (!response.ok) {
+      throw new Error(`Token request failed: ${response.status}`);
+    }
+
+    const data = await response.text();
+    // Parse the response format: USER_KEY;ACCESS_TOKEN
+    const [user_key, access_token] = data.split(';');
+    
+    if (!user_key || !access_token) {
+      throw new Error('Invalid token response format');
+    }
+
+    return { user_key, access_token };
+  } catch (error) {
+    console.error('Error getting access token:', error);
+    throw error;
+  }
+}
+
+// Helper function to send SMS
+async function sendSMS(tokenData: TokenResponse, smsData: SMSRequest): Promise<SMSResponse> {
+  try {
+    // Build the payload, only including optional fields if they’re defined
+    const payload: Record<string, any> = {
+      message_type: smsData.message_type ?? 'PRM',
+      message: smsData.message,
+      recipient: smsData.recipient,
     };
 
-    console.log('SMS Factor Request:', JSON.stringify(requestBody, null, 2));
+    if (smsData.sender) payload.sender = smsData.sender;
+    if (smsData.scheduled_delivery_time) payload.scheduled_delivery_time = smsData.scheduled_delivery_time;
+    if (smsData.scheduled_delivery_timezone) payload.scheduled_delivery_timezone = smsData.scheduled_delivery_timezone;
+    if (smsData.order_id) payload.order_id = smsData.order_id;
+    payload.returnCredits = smsData.returnCredits ?? false;
+    payload.returnRemaining = smsData.returnRemaining ?? false;
+    payload.allowInvalidRecipients = smsData.allowInvalidRecipients ?? false;
+    if (smsData.encoding) payload.encoding = smsData.encoding;
+    if (smsData.id_landing) payload.id_landing = smsData.id_landing;
+    if (smsData.campaign_name) payload.campaign_name = smsData.campaign_name;
+    if (smsData.max_fragments) payload.max_fragments = smsData.max_fragments;
+    if (smsData.truncate) payload.truncate = smsData.truncate;
+    if (smsData.validity_period_min) payload.validity_period_min = smsData.validity_period_min;
+    if (smsData.richsms_url) payload.richsms_url = smsData.richsms_url;
 
-    // 5) Call SMS Factor API
-    const apiRes = await fetch('https://api.smsfactor.com/send', {
+    const response = await fetch(`${SMS_API_BASE_URL}/sms`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'user_key': tokenData.user_key,
+        'Access_token': tokenData.access_token
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(payload)
     });
 
-    // 6) Read response
-    const responseText = await apiRes.text();
-    console.log('Raw API Response:', responseText);
-    
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch {
-      console.error('Failed to parse response:', responseText);
-      return NextResponse.json({
-        success: false,
-        errors: 'Invalid response from SMS API',
-        rawResponse: responseText
-      }, { status: 500 });
+    if (!response.ok) {
+      // Capture the error body to make debugging easier
+      const errorText = await response.text();
+      throw new Error(`SMS request failed: ${response.status} — ${errorText}`);
     }
 
-    console.log('Parsed Response:', result);
-
-    // 7) Handle SMS Factor response
-    // SMS Factor typically returns status codes like:
-    // 1 = Success
-    // -1 = Authentication error
-    // -2 = Missing mandatory parameter
-    // etc.
-    
-    if (apiRes.ok && (result.status === 1 || result.status === '1' || result.success)) {
-      return NextResponse.json({
-        success: true,
-        id: result.ticket || result.message_id || Date.now().toString(),
-        data: result,
-        recipients: gsmRecipients
-      }, { status: 200 });
-    } else {
-      // Handle error response
-      const errorMessage = result.message || result.error || 'SMS sending failed';
-      console.error('SMS Factor Error:', errorMessage, 'Status:', result.status);
-      
-      // Common SMS Factor error codes
-      const errorCodes: Record<string, string> = {
-        '-1': 'Authentication failed - check API token',
-        '-2': 'Missing mandatory parameter',
-        '-3': 'Insufficient credits',
-        '-4': 'Invalid phone number',
-        '-5': 'Invalid sender',
-        '-6': 'Message too long',
-        '-7': 'Invalid unicode parameter',
-        '-8': 'Invalid delay format',
-        '-9': 'Delay too far in the future'
-      };
-      
-      const knownError = errorCodes[result.status] || errorMessage;
-      
-      return NextResponse.json({
-        success: false,
-        errors: knownError,
-        data: result,
-        debug: {
-          status: result.status,
-          recipients: gsmRecipients,
-          httpStatus: apiRes.status
-        }
-      }, { status: 400 });
-    }
-
+    const data = await response.json();
+    return data;
   } catch (error) {
-    console.error('SMS API error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      message: 'Internal server error',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error('Error sending SMS:', error);
+    throw error;
+  }
+}
+
+// Main API route handler
+export async function POST(request: NextRequest) {
+  try {
+    // Validate environment variables
+    if (!SMS_API_EMAIL || !SMS_API_PASSWORD) {
+      return NextResponse.json(
+        { error: 'SMS API credentials not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Parse request body
+    const body: SMSRequest = await request.json();
+
+    // Validate required fields
+    if (!body.message || !body.recipient || body.recipient.length === 0) {
+      return NextResponse.json(
+        { error: 'Missing required fields: message and recipient' },
+        { status: 400 }
+      );
+    }
+
+    // Step 1: Get access token
+    const tokenData = await getAccessToken();
+
+    // Step 2: Send SMS
+    const smsResult = await sendSMS(tokenData, body);
+
+    // Return the result
+    return NextResponse.json(smsResult, { status: 200 });
+  } catch (error) {
+    console.error('SMS API Error:', error);
+    return NextResponse.json(
+      {
+        error: 'Failed to send SMS',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// Optional: GET endpoint to test the connection
+export async function GET(request: NextRequest) {
+  try {
+    // Validate environment variables
+    if (!SMS_API_EMAIL || !SMS_API_PASSWORD) {
+      return NextResponse.json(
+        { error: 'SMS API credentials not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Try to get access token to verify credentials
+    const tokenData = await getAccessToken();
+
+    return NextResponse.json(
+      {
+        status: 'connected',
+        message: 'SMS API credentials are valid',
+        user_key: tokenData.user_key.substring(0, 10) + '...' // Show partial key for security
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: 'Failed to connect to SMS API',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
   }
 }

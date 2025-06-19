@@ -87,7 +87,9 @@ const BLOCKED_MESSAGE_TERMS = [
   'frais', 'fees', 'taxe', 'tax', 'facture', 'invoice',
   'acheter', 'buy', 'payer', 'pay', 'prix', 'price',
   'gratuit', 'free', 'offre', 'offer', 'promo', 'reduction',
-  'cash', 'espece', 'cheque', 'bitcoin', 'crypto'
+  'cash', 'espece', 'cheque', 'bitcoin', 'crypto',
+  'casino', 'montant', 'gain', 'gagner', 'jackpot', 'mise',
+  'pari', 'parier', 'jeu', 'jouer', 'loterie', 'loto'
 ];
 
 const MONEY_SYMBOLS = ['€', '$', '£', '¥', '₹', '₽', '¢', '₿'];
@@ -533,7 +535,7 @@ const SMSCampaignSystem: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [template, setTemplate] = useState<string>('');
-  const [expediteur, setExpediteur] = useState<string>('');
+  const [sender] = useState<string>('EFFY PART'); // Fixed sender value
   const [campaignStatus, setCampaignStatus] = useState<CampaignStatus>('idle');
   const [progress, setProgress] = useState<number>(0);
   const [results, setResults] = useState<CampaignResults>({ sent: 0, failed: 0, total: 0, errors: [] });
@@ -546,31 +548,7 @@ const SMSCampaignSystem: React.FC = () => {
     results: new Map()
   });
   const [callDelay, setCallDelay] = useState<number>(5);
-  const [expediteurError, setExpediteurError] = useState<string>('');
   const [templateError, setTemplateError] = useState<string>('');
-
-  // Handle Expediteur change with validation
-  const handleExpediteurChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    const validatedValue = validateExpediteur(rawValue);
-    
-    setExpediteur(validatedValue);
-    
-    // Set error message if validation removed content
-    if (rawValue !== validatedValue && rawValue.length > 0) {
-      const upperValue = rawValue.toUpperCase();
-      if (BLOCKED_EXPEDITEUR_TERMS.some(term => upperValue.includes(term))) {
-        setExpediteurError('Nom interdit (banque ou alerte)');
-      } else if (rawValue.match(/[^a-zA-Z0-9]/)) {
-        setExpediteurError('Lettres et chiffres uniquement');
-      } else if (rawValue.length > 11) {
-        setExpediteurError('Maximum 11 caractères');
-      }
-      
-      // Clear error after 3 seconds
-      setTimeout(() => setExpediteurError(''), 3000);
-    }
-  };
 
   // Handle Template change with validation
   const handleTemplateChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -587,7 +565,7 @@ const SMSCampaignSystem: React.FC = () => {
       if (MONEY_SYMBOLS.some(symbol => rawValue.includes(symbol))) {
         setTemplateError('Les symboles monétaires ne sont pas autorisés');
       } else if (BLOCKED_MESSAGE_TERMS.some(term => lowerValue.includes(term.toLowerCase()))) {
-        setTemplateError('Termes de paiement interdits');
+        setTemplateError('Termes interdits détectés (paiement, casino, montant, etc.)');
       } else if (rawValue.length > 160) {
         setTemplateError('Maximum 160 caractères');
       }
@@ -682,7 +660,7 @@ const SMSCampaignSystem: React.FC = () => {
   };
 
   const startCampaign = async (): Promise<void> => {
-    if (contacts.length === 0 || !template || !expediteur) return;
+    if (contacts.length === 0 || !template) return;
     
     // Find phone number field
     const phoneField = csvHeaders.find(header => 
@@ -717,16 +695,18 @@ const SMSCampaignSystem: React.FC = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            destinataires: phoneNumber,
+            recipient: [String(phoneNumber)], // API expects array format
             message: personalizedMessage,
-            expediteur: expediteur,
-            date: '' // Envoi immédiat
+            sender: sender, // Using fixed sender value "EFFY PART"
+            message_type: 'PRM', // Promotional message type
+            returnCredits: true,
+            returnRemaining: true
           })
         });
 
         const result = await response.json();
         
-        if (result.success) {
+        if (response.ok && result.result === 'OK') {
           setResults(prev => ({ 
             ...prev, 
             sent: prev.sent + 1 
@@ -735,14 +715,20 @@ const SMSCampaignSystem: React.FC = () => {
           setResults(prev => ({ 
             ...prev, 
             failed: prev.failed + 1,
-            errors: [...prev.errors, { contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), error: result.errors || result.message }]
+            errors: [...prev.errors, { 
+              contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), 
+              error: result.error || result.details || 'Erreur inconnue' 
+            }]
           }));
         }
-      } catch  {
+      } catch (error) {
         setResults(prev => ({ 
           ...prev, 
           failed: prev.failed + 1,
-          errors: [...prev.errors, { contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), error: 'Erreur réseau' }]
+          errors: [...prev.errors, { 
+            contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), 
+            error: error instanceof Error ? error.message : 'Erreur réseau' 
+          }]
         }));
       }
       
@@ -1155,28 +1141,21 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Expéditeur (obligatoire)
+                      Sender (Expéditeur)
                     </label>
                     <div className="relative">
                       <input
-                        value={expediteur}
-                        onChange={handleExpediteurChange}
-                        className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 bg-white"
+                        value={sender}
+                        readOnly
+                        className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-gray-100 text-gray-700 cursor-not-allowed"
                         placeholder="Nom de l'expéditeur"
-                        maxLength={11}
                       />
                       <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-                        {expediteur.length}/11
+                        Fixe
                       </div>
                     </div>
-                    {expediteurError && (
-                      <p className="mt-2 text-sm text-red-600 flex items-center">
-                        <AlertCircle size={14} className="mr-1" />
-                        {expediteurError}
-                      </p>
-                    )}
                     <p className="mt-2 text-xs text-gray-500">
-                      Lettres et chiffres uniquement, max 11 caractères
+                      L'expéditeur est défini sur EFFY PART
                     </p>
                   </div>
                   
@@ -1206,7 +1185,7 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
                       </p>
                     )}
                     <p className="mt-2 text-xs text-gray-500">
-                      Les URLs et numéros de téléphone sont autorisés. Pas de termes de paiement.
+                      Les URLs et numéros de téléphone sont autorisés. Pas de termes de paiement, casino ou montant.
                     </p>
                     
                     {csvHeaders.length > 0 && (
@@ -1352,9 +1331,9 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
                         <span className="font-bold text-blue-800 text-lg">{contacts.length}</span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-blue-100">
-                        <span className="text-blue-700 font-medium">Expéditeur :</span>
-                        <span className={`font-bold text-lg ${expediteur ? 'text-green-600' : 'text-red-600'}`}>
-                          {expediteur || 'Non défini'}
+                        <span className="text-blue-700 font-medium">Sender :</span>
+                        <span className="font-bold text-green-600 text-lg">
+                          {sender}
                         </span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-blue-100">
@@ -1369,9 +1348,9 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
 
                   <button
                     onClick={startCampaign}
-                    disabled={contacts.length === 0 || !template || !expediteur || campaignStatus === 'running'}
+                    disabled={contacts.length === 0 || !template || campaignStatus === 'running'}
                     className={`w-full flex items-center justify-center space-x-3 py-4 px-8 rounded-xl font-semibold text-lg transition-all duration-300 ${
-                      contacts.length === 0 || !template || !expediteur || campaignStatus === 'running'
+                      contacts.length === 0 || !template || campaignStatus === 'running'
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
                     }`}
