@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@vapi-ai/web": "^2.3.5",
+    "@vapi-ai/web": "^2.3.6",
     "lucide-react": "^0.511.0",
     "next": "15.3.2",
     "react": "^19.0.0",
