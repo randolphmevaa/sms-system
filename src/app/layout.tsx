@@ -1,18 +1,57 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+// Import Google Fonts
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+// Import Custom Header Font
+const fontHeader = localFont({
+  src: [
+    {
+      path: "./fonts/Sato-Medium.ttf",
+      // weight: "700", // Uncomment/adjust if your font has weight variants
+      style: "normal",
+    },
+  ],
+  variable: "--font-header",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
+// Import Custom Body Font
+const fontBody = localFont({
+  src: [
+    {
+      path: "./fonts/RedHatDisplayMedium.ttf",
+      weight: "400",
+      style: "normal",
+    },
+  ],
+  variable: "--font-body",
   display: "swap",
 });
+
+// const inter = Inter({
+//   variable: "--font-inter",
+//   subsets: ["latin"],
+//   display: "swap",
+// });
+
+// const jetbrainsMono = JetBrains_Mono({
+//   variable: "--font-jetbrains-mono",
+//   subsets: ["latin"],
+//   display: "swap",
+// });
 
 export const metadata: Metadata = {
   title: "NexusMessage | Plateforme de Gestion de Campagnes SMS Avancée",
@@ -102,13 +141,12 @@ export default function NexusMessageLayout({
         <meta name="format-detection" content="telephone=no" />
       </head>
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-gray-50 text-gray-900 selection:bg-blue-100 selection:text-blue-900`}
-        suppressHydrationWarning
+        className={`${geistSans.variable} ${geistMono.variable} ${fontHeader.variable} ${fontBody.variable} antialiased`}
       >
         <div id="root" className="min-h-screen">
           {children}
         </div>
-        <script
+        {/* <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
@@ -130,7 +168,7 @@ export default function NexusMessageLayout({
               }
             })
           }}
-        />
+        /> */}
       </body>
     </html>
   );

@@ -21,6 +21,13 @@ import {
   TrendingUp,
   Settings,
   Phone,
+  // ArrowRight,
+  Star,
+  Shield,
+  Layers,
+  Activity,
+  Download,
+  ChevronRight,
 } from 'lucide-react';
 import VoiceCampaignSection from './VoiceCallComponent';
 
@@ -37,13 +44,6 @@ interface CampaignResults {
   errors: Array<{ contact: string; error: string }>;
 }
 
-// interface CallResult {
-//   duration: number;
-//   status: 'completed' | 'failed' | 'no-answer';
-//   transcript?: string;
-//   sentiment?: 'positive' | 'neutral' | 'negative';
-// }
-
 type CampaignStatus = 'idle' | 'running' | 'paused' | 'completed';
 type TabType = 'contacts' | 'template' | 'preview' | 'campaign' | 'results' | 'voice';
 
@@ -56,12 +56,6 @@ interface TabButtonProps {
   badge?: number;
   description?: string;
 }
-
-// interface VoiceCampaignState {
-//   status: 'idle' | 'running' | 'paused' | 'completed';
-//   currentIndex: number;
-//   results: Map<number, CallResult>;
-// }
 
 const BLOCKED_MESSAGE_TERMS = [
   'paiement', 'payment', 'euro', 'euros', 'argent', 'money',
@@ -77,40 +71,10 @@ const BLOCKED_MESSAGE_TERMS = [
 
 const MONEY_SYMBOLS = ['€', '$', '£', '¥', '₹', '₽', '¢', '₿'];
 
-// Validation functions
-// const validateExpediteur = (value: string): string => {
-//   // Remove any non-alphanumeric characters
-//   let cleaned = value.replace(/[^a-zA-Z0-9 ]/g, '');
-  
-//   // Limit to 11 characters
-//   cleaned = cleaned.slice(0, 11);
-  
-//   // Check against blocked terms
-//   const upperCleaned = cleaned.toUpperCase();
-//   for (const blocked of BLOCKED_EXPEDITEUR_TERMS) {
-//     if (upperCleaned.includes(blocked)) {
-//       // Remove the blocked term
-//       const regex = new RegExp(blocked, 'gi');
-//       cleaned = cleaned.replace(regex, '');
-//     }
-//   }
-  
-//   return cleaned;
-// };
-
 const validateMessageTemplate = (value: string): string => {
-  // Limit to 160 characters first
   let cleaned = value.slice(0, 160);
-  
-  // Only process if there's actual content to check
   if (cleaned.length === 0) return cleaned;
   
-  // URLs are now ALLOWED - no URL removal
-  
-  // REMOVED: Phone number blocking - now allows phone numbers in messages
-  // This change allows you to include callback numbers or contact information
-  
-  // Remove money symbols - only if found
   const hasMoneySymbol = MONEY_SYMBOLS.some(symbol => cleaned.includes(symbol));
   if (hasMoneySymbol) {
     MONEY_SYMBOLS.forEach(symbol => {
@@ -120,7 +84,6 @@ const validateMessageTemplate = (value: string): string => {
     });
   }
   
-  // Check for blocked payment terms - only process if potentially found
   const lowerCleaned = cleaned.toLowerCase();
   const hasBlockedTerms = BLOCKED_MESSAGE_TERMS.some(term => 
     lowerCleaned.includes(term.toLowerCase())
@@ -129,18 +92,14 @@ const validateMessageTemplate = (value: string): string => {
   if (hasBlockedTerms) {
     for (const blocked of BLOCKED_MESSAGE_TERMS) {
       if (lowerCleaned.includes(blocked.toLowerCase())) {
-        // Use a more careful regex that preserves spaces
         const regex = new RegExp(`(^|\\s)${blocked}(\\s|$)`, 'gi');
         cleaned = cleaned.replace(regex, '$1$2');
       }
     }
-    // Only clean up multiple spaces if we actually removed something
     cleaned = cleaned.replace(/\s{2,}/g, ' ');
   }
   
-  // Don't trim unless necessary - preserve user's spaces
   if (cleaned.startsWith(' ') || cleaned.endsWith(' ')) {
-    // Only trim if there are multiple spaces at start/end
     if (cleaned.match(/^\s{2,}/) || cleaned.match(/\s{2,}$/)) {
       cleaned = cleaned.trim();
     }
@@ -149,14 +108,128 @@ const validateMessageTemplate = (value: string): string => {
   return cleaned;
 };
 
-declare global {
-  interface Window {
-    vapiPollInterval?: NodeJS.Timeout;
-    fs: {
-      readFile: (filename: string, options?: { encoding?: string }) => Promise<Uint8Array | string>;
-    };
-  }
-}
+// Animated Background Component
+const AnimatedBackground: React.FC = () => {
+  return (
+    <>
+      <style>{`
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        
+        @keyframes float {
+          0% { transform: translateY(0px); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(-100vh); opacity: 0; }
+        }
+        
+        .animate-blob {
+          animation: blob 20s infinite;
+        }
+        
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+        
+        .animate-float {
+          animation: float 15s infinite;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 3px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      `}</style>
+      <div className="fixed inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950" />
+        
+        {/* Animated gradient orbs */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
+        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000" />
+        
+        {/* Grid pattern */}
+        {/* <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" xmlns="http://www.w3.org/2000/svg"%3E%3Cdefs%3E%3Cpattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse"%3E%3Cpath d="M 60 0 L 0 0 0 60" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/%3E%3C/pattern%3E%3C/defs%3E%3Crect width="100%25" height="100%25" fill="url(%23grid)"/%3E%3C/svg%3E')] opacity-50" /> */}
+      </div>
+    </>
+  );
+};
+
+// Premium Voice Campaign Component
+// const VoiceCampaignSection: React.FC<{ contacts: Contact[]; template: string }> = ({ contacts, template }) => {
+//   return (
+//     <div className="space-y-6">
+//       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+//         <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-3xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 transform hover:scale-105">
+//           <div className="flex items-center justify-between mb-4">
+//             <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl">
+//               <Phone className="w-6 h-6 text-white" />
+//             </div>
+//             <span className="text-xs text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full">AI Powered</span>
+//           </div>
+//           <h3 className="text-xl font-bold text-white mb-2">Appels Intelligents</h3>
+//           <p className="text-gray-400 text-sm">Assistant vocal AI pour conversations naturelles</p>
+//         </div>
+        
+//         <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-xl rounded-3xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 transform hover:scale-105">
+//           <div className="flex items-center justify-between mb-4">
+//             <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl">
+//               <Activity className="w-6 h-6 text-white" />
+//             </div>
+//             <span className="text-xs text-blue-300 bg-blue-500/20 px-3 py-1 rounded-full">Temps Réel</span>
+//           </div>
+//           <h3 className="text-xl font-bold text-white mb-2">Analyse Live</h3>
+//           <p className="text-gray-400 text-sm">Suivez vos appels en temps réel</p>
+//         </div>
+        
+//         <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-xl rounded-3xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 transform hover:scale-105">
+//           <div className="flex items-center justify-between mb-4">
+//             <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl">
+//               <Shield className="w-6 h-6 text-white" />
+//             </div>
+//             <span className="text-xs text-green-300 bg-green-500/20 px-3 py-1 rounded-full">Sécurisé</span>
+//           </div>
+//           <h3 className="text-xl font-bold text-white mb-2">100% Conforme</h3>
+//           <p className="text-gray-400 text-sm">Respect total du RGPD</p>
+//         </div>
+//       </div>
+      
+//       <div className="bg-gradient-to-r from-purple-500/5 to-pink-500/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10">
+//         <div className="text-center">
+//           <h3 className="text-2xl font-bold text-white mb-4">Prêt à révolutionner vos appels ?</h3>
+//           <p className="text-gray-400 mb-6 max-w-2xl mx-auto">
+//             Notre IA conversationnelle gère des milliers d'appels simultanément avec un taux de satisfaction de 95%
+//           </p>
+//           <button className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-2xl hover:shadow-purple-500/25">
+//             Configurer la Campagne Vocale
+//             <ArrowRight className="inline-block ml-2 w-5 h-5" />
+//           </button>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
 
 // Main SMS Campaign System Component
 const SMSCampaignSystem: React.FC = () => {
@@ -164,33 +237,23 @@ const SMSCampaignSystem: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [template, setTemplate] = useState<string>('');
-  const [sender] = useState<string>('EFFY PART'); // Fixed sender value
+  const [sender] = useState<string>('EFFY PART');
   const [campaignStatus, setCampaignStatus] = useState<CampaignStatus>('idle');
   const [progress, setProgress] = useState<number>(0);
   const [results, setResults] = useState<CampaignResults>({ sent: 0, failed: 0, total: 0, errors: [] });
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string>('');
-  // const [, setVoiceCallResults] = useState<Map<number, CallResult>>(new Map());
-  // const [voiceCampaign, setVoiceCampaign] = useState<VoiceCampaignState>({
-  //   status: 'idle',
-  //   currentIndex: 0,
-  //   results: new Map()
-  // });
-  // const [callDelay] = useState<number>(5);
   const [templateError, setTemplateError] = useState<string>('');
 
-  // Handle Template change with validation
   const handleTemplateChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const rawValue = e.target.value;
     const validatedValue = validateMessageTemplate(rawValue);
     
     setTemplate(validatedValue);
     
-    // Set error message if validation removed content
     if (rawValue !== validatedValue && rawValue.length > 0) {
       const lowerValue = rawValue.toLowerCase();
       
-      // URLs are now allowed - removed URL error
       if (MONEY_SYMBOLS.some(symbol => rawValue.includes(symbol))) {
         setTemplateError('Les symboles monétaires ne sont pas autorisés');
       } else if (BLOCKED_MESSAGE_TERMS.some(term => lowerValue.includes(term.toLowerCase()))) {
@@ -199,7 +262,6 @@ const SMSCampaignSystem: React.FC = () => {
         setTemplateError('Maximum 160 caractères');
       }
       
-      // Clear error after 3 seconds
       setTimeout(() => setTemplateError(''), 3000);
     }
   };
@@ -213,19 +275,16 @@ const SMSCampaignSystem: React.FC = () => {
 
     try {
       const text = await file.text();
-      
-      // Parse CSV manually to handle different formats
       const lines = text.split('\n').filter(line => line.trim());
+      
       if (lines.length < 2) {
         throw new Error('Le fichier CSV doit contenir au moins un en-tête et une ligne de données');
       }
 
-      // Get headers from first line
       const headers = lines[0].split(',').map(header => 
         header.trim().replace(/"/g, '').toLowerCase()
       );
       
-      // Parse data lines
       const contactsData: Contact[] = [];
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(value => value.trim().replace(/"/g, ''));
@@ -255,7 +314,6 @@ const SMSCampaignSystem: React.FC = () => {
 
   const addContact = (): void => {
     const newContact: Contact = { id: Date.now() };
-    // Initialize with empty values for all CSV headers, or default fields if no CSV loaded
     const fieldsToAdd = csvHeaders.length > 0 ? csvHeaders : ['nom', 'telephone', 'rdv', 'date'];
     fieldsToAdd.forEach(field => {
       newContact[field] = '';
@@ -277,7 +335,6 @@ const SMSCampaignSystem: React.FC = () => {
     if (!template || !contact) return '';
     
     let preview = template;
-    // Replace all variables based on CSV headers or contact properties
     Object.keys(contact).forEach(key => {
       if (key !== 'id') {
         const regex = new RegExp(`{${key}}`, 'g');
@@ -291,7 +348,6 @@ const SMSCampaignSystem: React.FC = () => {
   const startCampaign = async (): Promise<void> => {
     if (contacts.length === 0 || !template) return;
     
-    // Find phone number field
     const phoneField = csvHeaders.find(header => 
       header.includes('telephone') || header.includes('phone') || header.includes('tel') || header.includes('mobile')
     ) || 'telephone';
@@ -299,12 +355,9 @@ const SMSCampaignSystem: React.FC = () => {
     setCampaignStatus('running');
     setResults({ sent: 0, failed: 0, total: contacts.length, errors: [] });
     
-    // Real API integration
     for (let i = 0; i < contacts.length; i++) {
       const contact = contacts[i];
       const personalizedMessage = generatePreview(contact);
-      
-      // Get phone number from the detected field
       const phoneNumber = contact[phoneField];
       
       if (!phoneNumber) {
@@ -324,10 +377,10 @@ const SMSCampaignSystem: React.FC = () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            recipient: [String(phoneNumber)], // API expects array format
+            recipient: [String(phoneNumber)],
             message: personalizedMessage,
-            sender: sender, // Using fixed sender value "EFFY PART"
-            message_type: 'PRM', // Promotional message type
+            sender: sender,
+            message_type: 'PRM',
             returnCredits: true,
             returnRemaining: true
           })
@@ -362,123 +415,44 @@ const SMSCampaignSystem: React.FC = () => {
       }
       
       setProgress(((i + 1) / contacts.length) * 100);
-      // Small delay to see progress
       await new Promise(resolve => setTimeout(resolve, 500));
     }
     
     setCampaignStatus('completed');
   };
-
-  // const handleVoiceCallComplete = (contactId: number, result: CallResult) => {
-  //   setVoiceCallResults(prev => new Map(prev).set(contactId, result));
-  //   setVoiceCampaign(prev => ({
-  //     ...prev,
-  //     results: new Map(prev.results).set(contactId, result)
-  //   }));
-  // };
-
-  // Launch Voice Campaign
-  // const launchVoiceCampaign = async () => {
-  //   if (contacts.length === 0 || !template) {
-  //     alert('Veuillez ajouter des contacts et créer un modèle de message');
-  //     return;
-  //   }
-
-  //   if (!process.env.NEXT_PUBLIC_VAPI_API_KEY) {
-  //     alert('Clé API VAPI manquante. Veuillez configurer NEXT_PUBLIC_VAPI_API_KEY dans votre fichier .env.local');
-  //     return;
-  //   }
-
-  //   if (!process.env.NEXT_PUBLIC_VAPI_PHONE_NUMBER_ID) {
-  //     alert('ID du numéro de téléphone VAPI manquant. Veuillez configurer NEXT_PUBLIC_VAPI_PHONE_NUMBER_ID dans votre fichier .env.local');
-  //     return;
-  //   }
-
-  //   setVoiceCampaign({
-  //     status: 'running',
-  //     currentIndex: 0,
-  //     results: new Map()
-  //   });
-
-  //   // Process contacts one by one
-  //   for (let i = 0; i < contacts.length; i++) {
-  //     if (voiceCampaign.status === 'paused') {
-  //       break;
-  //     }
-
-  //     const contact = contacts[i];
-  //     setVoiceCampaign(prev => ({ ...prev, currentIndex: i }));
-
-  //     try {
-  //       // Create a promise that resolves when the call is complete
-  //       await new Promise<void>((resolve) => {
-  //         const checkCallComplete = setInterval(() => {
-  //           if (voiceCampaign.results.has(contact.id)) {
-  //             clearInterval(checkCallComplete);
-  //             resolve();
-  //           }
-  //         }, 1000);
-
-  //         // Timeout after 5 minutes
-  //         setTimeout(() => {
-  //           clearInterval(checkCallComplete);
-  //           resolve();
-  //         }, 300000);
-  //       });
-
-  //       // Wait between calls
-  //       if (i < contacts.length - 1) {
-  //         await new Promise(resolve => setTimeout(resolve, callDelay * 1000));
-  //       }
-  //     } catch (error) {
-  //       console.error('Error processing contact:', error);
-  //       handleVoiceCallComplete(contact.id, {
-  //         duration: 0,
-  //         status: 'failed',
-  //         transcript: '',
-  //         sentiment: 'neutral'
-  //       });
-  //     }
-  //   }
-
-  //   setVoiceCampaign(prev => ({ ...prev, status: 'completed' }));
-  // };
-
-  // const pauseVoiceCampaign = () => {
-  //   setVoiceCampaign(prev => ({ ...prev, status: 'paused' }));
-  // };
-
-  // const resumeVoiceCampaign = () => {
-  //   setVoiceCampaign(prev => ({ ...prev, status: 'running' }));
-  //   // Continue from where we left off
-  //   launchVoiceCampaign();
-  // };
-
+  
   const TabButton: React.FC<TabButtonProps> = ({ id, label, icon: Icon, isActive, onClick, badge, description }) => (
     <button
       onClick={() => onClick(id)}
-      className={`group relative flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-3 p-4 sm:p-6 rounded-2xl font-semibold transition-all duration-300 hover:scale-105 ${
+      className={`group relative flex flex-col items-center p-6 rounded-3xl font-semibold transition-all duration-500 transform hover:scale-105 ${
         isActive 
-          ? 'bg-blue-600 text-white shadow-xl shadow-blue-200' 
-          : 'bg-white text-gray-700 hover:bg-gray-50 shadow-lg hover:shadow-xl border border-gray-100'
+          ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-2xl shadow-purple-500/25' 
+          : 'bg-white/5 backdrop-blur-xl text-gray-300 hover:bg-white/10 border border-white/10 hover:border-white/20'
       }`}
     >
-      <div className="relative flex-shrink-0">
-        <Icon size={24} className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+      <div className="relative mb-3">
+        <div className={`p-4 rounded-2xl transition-all duration-300 ${
+          isActive ? 'bg-white/20' : 'bg-white/5 group-hover:bg-white/10'
+        }`}>
+          <Icon size={28} className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+        </div>
         {badge && badge > 0 && (
-          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+          <span className="absolute -top-2 -right-2 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold shadow-lg">
             {badge > 99 ? '99+' : badge}
           </span>
         )}
       </div>
-      <div className="text-center sm:text-left">
-        <div className="font-bold text-sm sm:text-base">{label}</div>
+      <div className="text-center space-y-1">
+        <div className="font-bold text-base">{label}</div>
         {description && (
-          <div className={`text-xs mt-1 ${isActive ? 'text-blue-100' : 'text-gray-500'}`}>
+          <div className={`text-xs ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
             {description}
           </div>
         )}
       </div>
+      {isActive && (
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-3xl blur-xl -z-10" />
+      )}
     </button>
   );
 
@@ -490,55 +464,79 @@ const SMSCampaignSystem: React.FC = () => {
     icon: React.ComponentType<{ size?: number; className?: string }>;
     trend?: number;
   }> = ({ title, value, subtitle, color, icon: Icon, trend }) => (
-    <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:scale-105">
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-xl ${color}`}>
-          <Icon size={24} className="text-white" />
-        </div>
-        {trend !== undefined && (
-          <div className={`flex items-center space-x-1 text-sm font-medium ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            <TrendingUp size={16} className={trend >= 0 ? '' : 'rotate-180'} />
-            <span>{Math.abs(trend)}%</span>
+    <div className="relative bg-white/5 backdrop-blur-xl rounded-3xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 transform hover:scale-105 group">
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="relative">
+        <div className="flex items-center justify-between mb-4">
+          <div className={`p-3 rounded-2xl ${color} shadow-lg`}>
+            <Icon size={24} className="text-white" />
           </div>
-        )}
+          {trend !== undefined && (
+            <div className={`flex items-center space-x-1 text-sm font-medium ${trend >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <TrendingUp size={16} className={trend >= 0 ? '' : 'rotate-180'} />
+              <span>{Math.abs(trend)}%</span>
+            </div>
+          )}
+        </div>
+        <div className="text-3xl font-bold text-white mb-1">{value}</div>
+        <div className="text-gray-300 font-medium">{title}</div>
+        <div className="text-sm text-gray-500 mt-1">{subtitle}</div>
       </div>
-      <div className="text-3xl font-bold text-gray-900 mb-1">{value}</div>
-      <div className="text-gray-600 font-medium">{title}</div>
-      <div className="text-sm text-gray-500 mt-1">{subtitle}</div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen relative">
+      <AnimatedBackground />
+      
+      {/* Floating particles */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-1 h-1 bg-white/20 rounded-full animate-float"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 10}s`,
+              animationDuration: `${10 + Math.random() * 20}s`
+            }}
+          />
+        ))}
+      </div>
+
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="relative backdrop-blur-xl bg-white/5 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 space-y-4 sm:space-y-0">
-            <div className="flex items-center space-x-4">
-              <div className="relative bg-blue-600 p-3 rounded-2xl shadow-lg">
-                <MessageSquare className="h-8 w-8 text-white" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full animate-pulse"></div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-8 space-y-4 sm:space-y-0">
+            <div className="flex items-center space-x-6">
+              <div className="relative">
+                <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-4 rounded-3xl shadow-2xl shadow-purple-500/25 transform rotate-3 hover:rotate-6 transition-transform duration-300">
+                  <MessageSquare className="h-10 w-10 text-white" />
+                </div>
+                <div className="absolute -top-2 -right-2 w-5 h-5 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full animate-pulse shadow-lg shadow-green-500/50"></div>
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-pink-200">
                   NexusMessage Pro
                 </h1>
-                <p className="text-gray-600 flex items-center space-x-2 text-sm sm:text-base">
-                  <Sparkles size={16} className="text-blue-500" />
-                  <span>Plateforme de campagnes SMS & Voice AI</span>
+                <p className="text-gray-400 flex items-center space-x-2 text-base mt-1">
+                  <Sparkles size={18} className="text-purple-400 animate-pulse" />
+                  <span>Plateforme Premium SMS & Voice AI</span>
+                  <Star size={16} className="text-yellow-400" />
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="text-center bg-gray-50 rounded-xl p-4 min-w-[100px]">
-                <div className="text-sm text-gray-500 font-medium">Contacts</div>
-                <div className="text-2xl font-bold text-blue-600">{contacts.length}</div>
+              <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-2xl p-5 border border-purple-500/20 min-w-[120px]">
+                <div className="text-sm text-purple-300 font-medium mb-1">Contacts</div>
+                <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">{contacts.length}</div>
               </div>
-              <div className="text-center bg-gray-50 rounded-xl p-4 min-w-[100px]">
-                <div className="text-sm text-gray-500 font-medium">Statut</div>
-                <div className={`text-lg font-bold ${
-                  campaignStatus === 'completed' ? 'text-green-600' :
-                  campaignStatus === 'running' ? 'text-blue-600' :
+              <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-xl rounded-2xl p-5 border border-blue-500/20 min-w-[120px]">
+                <div className="text-sm text-blue-300 font-medium mb-1">Statut</div>
+                <div className={`text-2xl font-black ${
+                  campaignStatus === 'completed' ? 'text-green-400' :
+                  campaignStatus === 'running' ? 'text-blue-400 animate-pulse' :
                   'text-gray-400'
                 }`}>
                   {campaignStatus === 'completed' ? 'Terminé' :
@@ -551,9 +549,9 @@ const SMSCampaignSystem: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Navigation Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
           <TabButton 
             id="contacts" 
             label="Contacts" 
@@ -561,7 +559,7 @@ const SMSCampaignSystem: React.FC = () => {
             isActive={activeTab === 'contacts'}
             onClick={setActiveTab}
             badge={contacts.length}
-            description="Gérer vos contacts"
+            description="Gérer la base"
           />
           <TabButton 
             id="template" 
@@ -570,7 +568,7 @@ const SMSCampaignSystem: React.FC = () => {
             isActive={activeTab === 'template'}
             onClick={setActiveTab}
             badge={template ? 1 : 0}
-            description="Créer votre message"
+            description="Créer le SMS"
           />
           <TabButton 
             id="preview" 
@@ -578,7 +576,7 @@ const SMSCampaignSystem: React.FC = () => {
             icon={Eye} 
             isActive={activeTab === 'preview'}
             onClick={setActiveTab}
-            description="Vérifier le rendu"
+            description="Visualiser"
           />
           <TabButton 
             id="campaign" 
@@ -586,44 +584,46 @@ const SMSCampaignSystem: React.FC = () => {
             icon={Send} 
             isActive={activeTab === 'campaign'}
             onClick={setActiveTab}
-            description="Lancer l'envoi"
+            description="Lancer"
           />
           <TabButton 
             id="results" 
-            label="Résultats" 
+            label="Analytics" 
             icon={BarChart3} 
             isActive={activeTab === 'results'}
             onClick={setActiveTab}
             badge={results.sent}
-            description="Analyser les données"
+            description="Statistiques"
           />
           <TabButton 
             id="voice" 
-            label="Appels Vocaux" 
+            label="Voice AI" 
             icon={Phone} 
             isActive={activeTab === 'voice'}
             onClick={setActiveTab}
-            description="Campagne vocale AI"
+            description="Appels IA"
           />
         </div>
 
         {/* Content Area */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+        <div className="relative bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5 pointer-events-none" />
           
           {/* Contacts Tab */}
           {activeTab === 'contacts' && (
-            <div className="p-6 sm:p-8">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 space-y-4 sm:space-y-0">
+            <div className="relative p-8 lg:p-10">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 space-y-4 sm:space-y-0">
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                    Gestion des Contacts
+                  <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-3">
+                    Centre de Contacts
                   </h2>
-                  <p className="text-gray-600">Importez vos contacts ou ajoutez-les manuellement</p>
+                  <p className="text-gray-400 text-lg">Importez et gérez votre base de données</p>
                 </div>
                 <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-                  <label className="flex items-center justify-center space-x-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl cursor-pointer transition-all duration-200 font-semibold w-full sm:w-auto">
-                    <Upload size={20} />
-                    <span>Importer CSV</span>
+                  <label className="group relative overflow-hidden flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-2xl cursor-pointer transition-all duration-300 font-bold shadow-2xl hover:shadow-purple-500/25 hover:scale-105">
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <Upload size={22} className="relative z-10" />
+                    <span className="relative z-10">Importer CSV</span>
                     <input 
                       type="file" 
                       accept=".csv" 
@@ -633,102 +633,107 @@ const SMSCampaignSystem: React.FC = () => {
                   </label>
                   <button 
                     onClick={addContact}
-                    className="flex items-center justify-center space-x-3 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl transition-all duration-200 font-semibold w-full sm:w-auto"
+                    className="group relative overflow-hidden flex items-center justify-center space-x-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-8 py-4 rounded-2xl transition-all duration-300 font-bold shadow-2xl hover:shadow-green-500/25 hover:scale-105"
                   >
-                    <Plus size={20} />
-                    <span>Ajouter</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <Plus size={22} className="relative z-10" />
+                    <span className="relative z-10">Ajouter</span>
                   </button>
                 </div>
               </div>
 
               {contacts.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="relative inline-block mb-6">
-                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4 mx-auto">
-                      <Users className="h-10 w-10 text-gray-400" />
+                <div className="text-center py-20">
+                  <div className="relative inline-block mb-8">
+                    <div className="w-32 h-32 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full flex items-center justify-center mb-6 mx-auto backdrop-blur-xl border border-white/10">
+                      <Users className="h-16 w-16 text-purple-400" />
+                    </div>
+                    <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-2xl shadow-orange-500/25">
+                      <Star className="h-8 w-8 text-white" />
                     </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Aucun contact chargé</h3>
-                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                    Commencez par importer un fichier CSV ou ajouter des contacts manuellement
+                  <h3 className="text-3xl font-bold text-white mb-4">Commencez Votre Aventure</h3>
+                  <p className="text-gray-400 mb-8 max-w-md mx-auto text-lg">
+                    Importez vos contacts pour débloquer la puissance du marketing SMS nouvelle génération
                   </p>
                   
                   {uploadError && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 max-w-md mx-auto">
-                      <div className="flex items-center space-x-2">
-                        <AlertCircle size={20} />
+                    <div className="mb-8 p-6 bg-red-500/10 backdrop-blur-xl border border-red-500/20 rounded-2xl text-red-400 max-w-md mx-auto">
+                      <div className="flex items-center space-x-3">
+                        <AlertCircle size={24} className="flex-shrink-0" />
                         <span className="font-medium">{uploadError}</span>
                       </div>
                     </div>
                   )}
                   
                   {isUploading && (
-                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-700 max-w-md mx-auto">
-                      <div className="flex items-center space-x-2">
-                        <div className="animate-spin w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                        <span className="font-medium">Traitement du fichier CSV...</span>
+                    <div className="mb-8 p-6 bg-blue-500/10 backdrop-blur-xl border border-blue-500/20 rounded-2xl text-blue-400 max-w-md mx-auto">
+                      <div className="flex items-center space-x-3">
+                        <div className="animate-spin w-6 h-6 border-3 border-blue-400 border-t-transparent rounded-full"></div>
+                        <span className="font-medium">Analyse du fichier en cours...</span>
                       </div>
                     </div>
                   )}
                   
-                  <div className="bg-blue-50 rounded-2xl p-6 max-w-2xl mx-auto border border-blue-100">
-                    <h4 className="font-semibold text-gray-900 mb-4 flex items-center justify-center space-x-2">
-                      <FileText size={20} className="text-blue-600" />
-                      <span>Format CSV Recommandé</span>
+                  <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-3xl p-8 max-w-2xl mx-auto border border-purple-500/20">
+                    <h4 className="font-bold text-white mb-6 flex items-center justify-center space-x-3 text-xl">
+                      <FileText size={24} className="text-purple-400" />
+                      <span>Format CSV Premium</span>
                     </h4>
-                    <div className="text-left space-y-3">
-                      <div className="flex items-center space-x-3 text-gray-700">
-                        <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                        <span>Première ligne = en-têtes des colonnes</span>
+                    <div className="text-left space-y-4">
+                      <div className="flex items-center space-x-3 text-gray-300">
+                        <CheckCircle size={20} className="text-green-400 flex-shrink-0" />
+                        <span>En-têtes automatiquement détectés</span>
                       </div>
-                      <div className="flex items-center space-x-3 text-gray-700">
-                        <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                        <span>Variables automatiquement détectées</span>
+                      <div className="flex items-center space-x-3 text-gray-300">
+                        <CheckCircle size={20} className="text-green-400 flex-shrink-0" />
+                        <span>Variables dynamiques instantanées</span>
                       </div>
-                      <div className="flex items-center space-x-3 text-gray-700">
-                        <CheckCircle size={16} className="text-green-500 flex-shrink-0" />
-                        <span>Séparateur : virgule (,)</span>
+                      <div className="flex items-center space-x-3 text-gray-300">
+                        <CheckCircle size={20} className="text-green-400 flex-shrink-0" />
+                        <span>Support multi-colonnes illimité</span>
                       </div>
-                      <pre className="bg-white p-4 rounded-lg mt-4 text-sm font-mono text-gray-800 border border-gray-200 overflow-x-auto">
+                      <pre className="bg-black/30 backdrop-blur-xl p-6 rounded-2xl mt-6 text-sm font-mono text-green-400 border border-green-500/20 overflow-x-auto">
 {`nom,telephone,rdv,date
-Martin Dubois,+33123456789,14h30,2024-05-28`}
+Martin Dubois,+33123456789,14h30,2024-05-28
+Sophie Laurent,+33987654321,16h00,2024-05-28`}
                       </pre>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="bg-gray-50 rounded-2xl overflow-hidden">
+                <div className="bg-black/20 backdrop-blur-xl rounded-3xl overflow-hidden border border-white/10">
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
-                        <tr className="bg-gray-100 border-b border-gray-200">
+                        <tr className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-b border-white/10">
                           {(csvHeaders.length > 0 ? csvHeaders : ['nom', 'telephone', 'rdv', 'date']).map(header => (
-                            <th key={header} className="px-6 py-4 text-left text-sm font-semibold text-gray-700 capitalize whitespace-nowrap">
+                            <th key={header} className="px-6 py-5 text-left text-sm font-bold text-gray-300 uppercase tracking-wider">
                               {header.replace(/_/g, ' ')}
                             </th>
                           ))}
-                          <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700 whitespace-nowrap">Actions</th>
+                          <th className="px-6 py-5 text-center text-sm font-bold text-gray-300 uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {contacts.map((contact ) => (
-                          <tr key={contact.id} className="hover:bg-gray-50 transition-colors duration-200">
+                      <tbody className="divide-y divide-white/5">
+                        {contacts.map((contact) => (
+                          <tr key={contact.id} className="hover:bg-white/5 transition-colors duration-200">
                             {(csvHeaders.length > 0 ? csvHeaders : ['nom', 'telephone', 'rdv', 'date']).map(field => (
-                              <td key={field} className="px-6 py-4 whitespace-nowrap">
+                              <td key={field} className="px-6 py-4">
                                 <input 
                                   value={String(contact[field] || '')}
                                   onChange={(e) => updateContact(contact.id, field, e.target.value)}
-                                  className="w-full min-w-[120px] border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900 bg-white"
+                                  className="w-full min-w-[140px] bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-white placeholder-gray-500"
                                   placeholder={field}
                                 />
                               </td>
                             ))}
-                            <td className="px-6 py-4 text-center whitespace-nowrap">
+                            <td className="px-6 py-4 text-center">
                               <button 
                                 onClick={() => deleteContact(contact.id)}
-                                className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-all duration-200"
+                                className="text-red-400 hover:text-red-300 p-3 rounded-xl hover:bg-red-500/10 transition-all duration-200 transform hover:scale-110"
                               >
-                                <Trash2 size={16} />
+                                <Trash2 size={18} />
                               </button>
                             </td>
                           </tr>
@@ -737,13 +742,13 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
                     </table>
                   </div>
                   {csvHeaders.length > 0 && (
-                    <div className="p-4 bg-green-50 border-t border-green-200">
-                      <div className="flex flex-wrap items-center text-sm text-green-700">
-                        <CheckCircle size={16} className="mr-2 flex-shrink-0" />
-                        <span className="font-medium mr-2">Variables détectées :</span>
+                    <div className="p-6 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-t border-white/10">
+                      <div className="flex flex-wrap items-center text-sm text-green-400">
+                        <CheckCircle size={20} className="mr-3 flex-shrink-0" />
+                        <span className="font-bold mr-3">Variables magiques détectées :</span>
                         <div className="flex flex-wrap gap-2">
                           {csvHeaders.map(header => (
-                            <span key={header} className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-mono">
+                            <span key={header} className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-xs font-mono backdrop-blur-xl border border-green-500/30">
                               {`{${header}}`}
                             </span>
                           ))}
@@ -758,79 +763,86 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
 
           {/* Template Tab */}
           {activeTab === 'template' && (
-            <div className="p-6 sm:p-8">
-              <div className="mb-8">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                  Modèle de Message
+            <div className="relative p-8 lg:p-10">
+              <div className="mb-10">
+                <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-3">
+                  Studio de Création
                 </h2>
-                <p className="text-gray-600">Créez votre message personnalisé avec des variables dynamiques</p>
+                <p className="text-gray-400 text-lg">Composez des messages qui convertissent avec l&apos;IA</p>
               </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div className="space-y-8">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Sender (Expéditeur)
+                    <label className="block text-sm font-bold text-purple-300 mb-4 uppercase tracking-wider">
+                      Expéditeur Premium
                     </label>
-                    <div className="relative">
+                    <div className="relative group">
                       <input
                         value={sender}
                         readOnly
-                        className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-gray-100 text-gray-700 cursor-not-allowed"
+                        className="w-full bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-xl border border-purple-500/20 rounded-2xl px-6 py-4 text-white font-medium cursor-not-allowed"
                         placeholder="Nom de l'expéditeur"
                       />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-                        Fixe
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <Shield className="w-5 h-5 text-purple-400" />
                       </div>
                     </div>
-                    <p className="mt-2 text-xs text-gray-500">
-                      L&apos;expéditeur est défini sur EFFY PART
+                    <p className="mt-3 text-xs text-gray-500 flex items-center">
+                      <CheckCircle size={14} className="mr-2 text-green-400" />
+                      Expéditeur vérifié et approuvé
                     </p>
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      Message Template
+                    <label className="block text-sm font-bold text-purple-300 mb-4 uppercase tracking-wider">
+                      Message Intelligent
                     </label>
-                    <div className="relative">
+                    <div className="relative group">
                       <textarea
                         value={template}
                         onChange={handleTemplateChange}
-                        className="w-full h-64 border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none text-gray-900 bg-white"
+                        className="w-full h-72 bg-black/30 backdrop-blur-xl border border-white/10 rounded-2xl px-6 py-4 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 resize-none text-white placeholder-gray-500 text-lg"
                         placeholder={csvHeaders.length > 0 
                           ? `Bonjour {${csvHeaders[0] || 'nom'}}, votre message personnalisé ici...`
-                          : "Importez d'abord un CSV pour voir les variables disponibles"
+                          : "Importez d'abord un CSV pour débloquer les variables magiques ✨"
                         }
                         maxLength={160}
                       />
-                      <div className="absolute right-3 bottom-3 text-xs text-gray-500">
+                      <div className="absolute right-4 bottom-4 text-xs text-gray-500 bg-black/50 backdrop-blur-xl px-3 py-1 rounded-full border border-white/10">
                         {template.length}/160
                       </div>
                     </div>
                     {templateError && (
-                      <p className="mt-2 text-sm text-red-600 flex items-center">
-                        <AlertCircle size={14} className="mr-1" />
-                        {templateError}
-                      </p>
+                      <div className="mt-3 p-4 bg-red-500/10 backdrop-blur-xl border border-red-500/20 rounded-2xl">
+                        <p className="text-sm text-red-400 flex items-center">
+                          <AlertCircle size={16} className="mr-2 flex-shrink-0" />
+                          {templateError}
+                        </p>
+                      </div>
                     )}
-                    <p className="mt-2 text-xs text-gray-500">
-                      Les URLs et numéros de téléphone sont autorisés. Pas de termes de paiement, casino ou montant.
+                    <p className="mt-3 text-xs text-gray-500 flex items-center">
+                      <Sparkles size={14} className="mr-2 text-yellow-400" />
+                      URLs et téléphones autorisés • Protection anti-spam activée
                     </p>
                     
                     {csvHeaders.length > 0 && (
-                      <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                        <p className="font-semibold text-gray-800 mb-3 flex items-center space-x-2">
-                          <Target size={16} className="text-blue-600" />
-                          <span>Variables disponibles</span>
+                      <div className="mt-6 p-6 bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-2xl border border-purple-500/20">
+                        <p className="font-bold text-white mb-4 flex items-center space-x-2">
+                          <Target size={20} className="text-purple-400" />
+                          <span>Variables Dynamiques</span>
                         </p>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-3">
                           {csvHeaders.map(variable => (
                             <button
                               key={variable} 
-                              className="bg-white text-blue-800 px-3 py-1 rounded-lg text-sm font-mono border border-blue-300 hover:bg-blue-100 transition-colors duration-200"
+                              className="group bg-black/30 backdrop-blur-xl text-purple-300 px-4 py-2 rounded-xl text-sm font-mono border border-purple-500/30 hover:bg-purple-500/20 hover:border-purple-400 transition-all duration-200 transform hover:scale-105"
                               onClick={() => setTemplate(prev => prev + `{${variable}}`)}
                             >
-                              {`{${variable}}`}
+                              <span className="flex items-center space-x-2">
+                                <Layers size={14} className="group-hover:rotate-12 transition-transform duration-200" />
+                                <span>{`{${variable}}`}</span>
+                              </span>
                             </button>
                           ))}
                         </div>
@@ -840,33 +852,46 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Aperçu en Temps Réel
+                  <label className="block text-sm font-bold text-purple-300 mb-4 uppercase tracking-wider">
+                    Prévisualisation Live
                   </label>
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 h-80 overflow-y-auto">
+                  <div className="bg-gradient-to-br from-black/40 to-black/20 backdrop-blur-xl border border-white/10 rounded-3xl p-8 h-96 overflow-y-auto">
                     {template ? (
-                      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-                        <div className="flex items-center space-x-2 text-xs text-gray-500 mb-3">
-                          <MessageSquare size={14} />
-                          <span>Aperçu SMS</span>
-                        </div>
-                        <div className="text-sm leading-relaxed text-gray-800">
-                          {contacts.length > 0 ? generatePreview(contacts[0]) : template}
-                        </div>
-                        <div className="flex justify-between items-center text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
-                          <span>
-                            {(contacts.length > 0 ? generatePreview(contacts[0]) : template).length} caractères
-                          </span>
-                          <span className="flex items-center space-x-1">
-                            <Clock size={12} />
-                            <span>{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-                          </span>
+                      <div className="relative">
+                        {/* iPhone mockup */}
+                        <div className="max-w-sm mx-auto">
+                          <div className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-[3rem] p-2 shadow-2xl">
+                            <div className="bg-black rounded-[2.5rem] p-6">
+                              <div className="bg-gray-900 rounded-2xl p-4 mb-4">
+                                <div className="flex items-center space-x-2 text-xs text-gray-500 mb-3">
+                                  <MessageSquare size={16} />
+                                  <span>Message SMS</span>
+                                </div>
+                                <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-2xl p-4 shadow-lg">
+                                  <div className="text-sm leading-relaxed">
+                                    {contacts.length > 0 ? generatePreview(contacts[0]) : template}
+                                  </div>
+                                </div>
+                                <div className="flex justify-between items-center text-xs text-gray-600 mt-3">
+                                  <span className="flex items-center space-x-1">
+                                    <span>{sender}</span>
+                                  </span>
+                                  <span className="flex items-center space-x-1">
+                                    <Clock size={12} />
+                                    <span>{new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                        <MessageSquare className="mb-3" size={32} />
-                        <span className="text-center">Saisissez votre message pour voir l&apos;aperçu</span>
+                      <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                        <div className="w-20 h-20 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full flex items-center justify-center mb-4 backdrop-blur-xl border border-white/10">
+                          <MessageSquare className="w-10 h-10 text-purple-400" />
+                        </div>
+                        <span className="text-center text-lg">Commencez à taper pour voir la magie ✨</span>
                       </div>
                     )}
                   </div>
@@ -875,55 +900,59 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
             </div>
           )}
 
-
           {/* Preview Tab */}
           {activeTab === 'preview' && (
-            <div className="p-6 sm:p-8">
-              <div className="mb-8">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                  Aperçu des Messages
+            <div className="relative p-8 lg:p-10">
+              <div className="mb-10">
+                <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-3">
+                  Galerie d&apos;Aperçus
                 </h2>
-                <p className="text-gray-600">Vérifiez chaque message personnalisé avant l&apos;envoi</p>
+                <p className="text-gray-400 text-lg">Validez chaque message avant l&apos;envoi</p>
               </div>
               
               {contacts.length === 0 || !template ? (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6 mx-auto">
-                    <Eye className="h-10 w-10 text-gray-400" />
+                <div className="text-center py-24">
+                  <div className="relative inline-block mb-8">
+                    <div className="w-32 h-32 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full flex items-center justify-center mb-6 mx-auto backdrop-blur-xl border border-white/10">
+                      <Eye className="h-16 w-16 text-purple-400" />
+                    </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Aperçu non disponible</h3>
-                  <p className="text-gray-600 max-w-md mx-auto">
-                    Veuillez ajouter des contacts et créer un modèle de message pour voir l&apos;aperçu
+                  <h3 className="text-3xl font-bold text-white mb-4">Aperçu en Attente</h3>
+                  <p className="text-gray-400 max-w-md mx-auto text-lg">
+                    Ajoutez des contacts et créez votre message pour débloquer les aperçus personnalisés
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4 max-h-96 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {contacts.map((contact, index) => {
                     const nameField = csvHeaders.find(h => h.includes('nom') || h.includes('name')) || csvHeaders[0] || 'nom';
                     const phoneField = csvHeaders.find(h => h.includes('telephone') || h.includes('phone') || h.includes('tel') || h.includes('mobile')) || 'telephone';
                     
                     return (
-                      <div key={contact.id} className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="font-semibold text-gray-800 flex items-center space-x-2">
-                            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                              {index + 1}
+                      <div key={contact.id} className="group relative bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-3xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 transform hover:scale-105">
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-pink-500/5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <div className="relative">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                                {index + 1}
+                              </div>
+                              <div>
+                                <div className="font-bold text-white">{String(contact[nameField]) || `Contact ${index + 1}`}</div>
+                                <div className="text-sm text-gray-400 font-mono">{String(contact[phoneField]) || 'N/A'}</div>
+                              </div>
                             </div>
-                            <span>{String(contact[nameField]) || `Contact ${index + 1}`}</span>
                           </div>
-                          <div className="text-sm text-gray-600 bg-white px-3 py-1 rounded-full border border-gray-200 font-mono">
-                            {String(contact[phoneField]) || 'N/A'}
+                          <div className="bg-black/30 backdrop-blur-xl rounded-2xl p-4 text-sm border border-white/10 text-gray-300">
+                            {generatePreview(contact)}
                           </div>
-                        </div>
-                        <div className="bg-white rounded-lg p-4 text-sm border border-gray-200 text-gray-800">
-                          {generatePreview(contact)}
-                        </div>
-                        <div className="flex justify-between items-center text-xs text-gray-500 mt-3">
-                          <span>{generatePreview(contact).length} caractères</span>
-                          <span className="flex items-center space-x-1">
-                            <CheckCircle size={12} className="text-green-500" />
-                            <span>Prêt à envoyer</span>
-                          </span>
+                          <div className="flex justify-between items-center text-xs text-gray-500 mt-4">
+                            <span>{generatePreview(contact).length} caractères</span>
+                            <span className="flex items-center space-x-1 text-green-400">
+                              <CheckCircle size={14} />
+                              <span>Prêt</span>
+                            </span>
+                          </div>
                         </div>
                       </div>
                     );
@@ -935,41 +964,39 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
 
           {/* Campaign Tab */}
           {activeTab === 'campaign' && (
-            <div className="p-6 sm:p-8">
-              <div className="mb-8">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                  Lancement de Campagne
+            <div className="relative p-8 lg:p-10">
+              <div className="mb-10">
+                <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-3">
+                  Centre de Commande
                 </h2>
-                <p className="text-gray-600">Contrôlez et suivez l&apos;envoi de votre campagne SMS</p>
+                <p className="text-gray-400 text-lg">Lancez votre campagne et suivez les performances en temps réel</p>
               </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  <div className="bg-blue-50 rounded-2xl p-6 border border-blue-200">
-                    <h3 className="text-xl font-semibold text-blue-800 mb-6 flex items-center space-x-2">
-                      <Settings size={20} />
-                      <span>Résumé de la Campagne</span>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                <div className="space-y-8">
+                  <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-3xl p-8 border border-purple-500/20">
+                    <h3 className="text-2xl font-bold text-white mb-8 flex items-center space-x-3">
+                      <Settings size={28} className="text-purple-400" />
+                      <span>Configuration Finale</span>
                     </h3>
                     <div className="space-y-4">
-                      <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-blue-100">
-                        <span className="text-blue-700 font-medium">Nombre de contacts :</span>
-                        <span className="font-bold text-blue-800 text-lg">{contacts.length}</span>
+                      <div className="bg-black/30 backdrop-blur-xl rounded-2xl p-5 border border-white/10 flex justify-between items-center group hover:scale-105 transition-transform duration-200">
+                        <span className="text-purple-300 font-medium">Contacts ciblés</span>
+                        <span className="font-black text-2xl text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">{contacts.length}</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-blue-100">
-                        <span className="text-blue-700 font-medium">Messages à envoyer :</span>
-                        <span className="font-bold text-blue-800 text-lg">{contacts.length}</span>
+                      <div className="bg-black/30 backdrop-blur-xl rounded-2xl p-5 border border-white/10 flex justify-between items-center group hover:scale-105 transition-transform duration-200">
+                        <span className="text-blue-300 font-medium">Messages prévus</span>
+                        <span className="font-black text-2xl text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">{contacts.length}</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-blue-100">
-                        <span className="text-blue-700 font-medium">Sender :</span>
-                        <span className="font-bold text-green-600 text-lg">
-                          {sender}
-                        </span>
+                      <div className="bg-black/30 backdrop-blur-xl rounded-2xl p-5 border border-white/10 flex justify-between items-center group hover:scale-105 transition-transform duration-200">
+                        <span className="text-green-300 font-medium">Expéditeur</span>
+                        <span className="font-black text-xl text-green-400">{sender}</span>
                       </div>
-                      <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-blue-100">
-                        <span className="text-blue-700 font-medium">Statut du modèle :</span>
-                        <span className={`font-bold text-lg flex items-center space-x-1 ${template ? 'text-green-600' : 'text-red-600'}`}>
-                          {template ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-                          <span>{template ? 'Prêt' : 'Non défini'}</span>
+                      <div className="bg-black/30 backdrop-blur-xl rounded-2xl p-5 border border-white/10 flex justify-between items-center group hover:scale-105 transition-transform duration-200">
+                        <span className="text-yellow-300 font-medium">Template</span>
+                        <span className={`font-black text-xl flex items-center space-x-2 ${template ? 'text-green-400' : 'text-red-400'}`}>
+                          {template ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+                          <span>{template ? 'Configuré' : 'Manquant'}</span>
                         </span>
                       </div>
                     </div>
@@ -978,21 +1005,23 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
                   <button
                     onClick={startCampaign}
                     disabled={contacts.length === 0 || !template || campaignStatus === 'running'}
-                    className={`w-full flex items-center justify-center space-x-3 py-4 px-8 rounded-xl font-semibold text-lg transition-all duration-300 ${
+                    className={`group relative w-full overflow-hidden flex items-center justify-center space-x-4 py-6 px-10 rounded-3xl font-black text-xl transition-all duration-500 transform ${
                       contacts.length === 0 || !template || campaignStatus === 'running'
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
+                        ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-2xl hover:shadow-purple-500/50 hover:scale-105'
                     }`}
                   >
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     {campaignStatus === 'running' ? (
                       <>
-                        <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
-                        <span>Envoi en cours...</span>
+                        <div className="relative z-10 animate-spin w-6 h-6 border-3 border-white border-t-transparent rounded-full"></div>
+                        <span className="relative z-10">Envoi en cours...</span>
                       </>
                     ) : (
                       <>
-                        <Zap size={24} />
-                        <span>Lancer la Campagne</span>
+                        <Zap size={28} className="relative z-10 group-hover:animate-pulse" />
+                        <span className="relative z-10">Déclencher la Campagne</span>
+                        <ChevronRight size={24} className="relative z-10 group-hover:translate-x-2 transition-transform duration-300" />
                       </>
                     )}
                   </button>
@@ -1000,65 +1029,67 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
 
                 <div>
                   {campaignStatus !== 'idle' && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
-                      <h3 className="text-xl font-semibold mb-6 flex items-center space-x-2">
-                        <BarChart3 size={20} className="text-blue-600" />
-                        <span>Progression en Temps Réel</span>
+                    <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-xl rounded-3xl p-8 border border-blue-500/20">
+                      <h3 className="text-2xl font-bold text-white mb-8 flex items-center space-x-3">
+                        <Activity size={28} className="text-blue-400 animate-pulse" />
+                        <span>Tableau de Bord Live</span>
                       </h3>
                       
-                      <div className="mb-6">
-                        <div className="flex justify-between text-sm text-gray-600 mb-2">
-                          <span className="font-medium">Progression</span>
-                          <span className="font-bold">{Math.round(progress)}%</span>
+                      <div className="mb-8">
+                        <div className="flex justify-between text-sm text-gray-400 mb-3">
+                          <span className="font-medium">Progression globale</span>
+                          <span className="font-black text-white">{Math.round(progress)}%</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div className="relative w-full bg-black/30 backdrop-blur-xl rounded-full h-4 overflow-hidden border border-white/10">
                           <div 
-                            className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-500"
+                            className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500 ease-out shadow-lg shadow-purple-500/50"
                             style={{ width: `${progress}%` }}
-                          ></div>
+                          >
+                            <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                          </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-4 mb-6">
+                      <div className="grid grid-cols-3 gap-4 mb-8">
                         <StatCard
-                          title="Envoyés"
+                          title="Succès"
                           value={results.sent}
-                          subtitle="Avec succès"
-                          color="bg-green-500"
+                          subtitle="Délivrés"
+                          color="bg-gradient-to-br from-green-500 to-emerald-500"
                           icon={CheckCircle}
                         />
                         <StatCard
                           title="Échecs"
                           value={results.failed}
                           subtitle="Erreurs"
-                          color="bg-red-500"
+                          color="bg-gradient-to-br from-red-500 to-pink-500"
                           icon={AlertCircle}
                         />
                         <StatCard
                           title="Total"
                           value={results.total}
                           subtitle="Messages"
-                          color="bg-blue-500"
+                          color="bg-gradient-to-br from-blue-500 to-cyan-500"
                           icon={Send}
                         />
                       </div>
 
                       {campaignStatus === 'completed' && (
-                        <div className="p-4 bg-green-50 rounded-xl border border-green-200 flex items-center">
-                          <CheckCircle className="text-green-600 mr-3 flex-shrink-0" size={24} />
+                        <div className="p-6 bg-gradient-to-r from-green-500/10 to-emerald-500/10 backdrop-blur-xl rounded-2xl border border-green-500/20 flex items-center">
+                          <CheckCircle className="text-green-400 mr-4 flex-shrink-0" size={32} />
                           <div>
-                            <div className="text-green-800 font-semibold">Campagne terminée avec succès !</div>
-                            <div className="text-green-600 text-sm">Tous les messages ont été traités</div>
+                            <div className="text-green-400 font-black text-xl">Mission Accomplie !</div>
+                            <div className="text-green-300 text-sm mt-1">Votre campagne a été exécutée avec succès</div>
                           </div>
                         </div>
                       )}
 
                       {results.errors.length > 0 && (
-                        <div className="mt-4 p-4 bg-red-50 rounded-xl border border-red-200">
-                          <h4 className="font-semibold text-red-800 mb-2">Erreurs rencontrées :</h4>
-                          <div className="space-y-1 max-h-32 overflow-y-auto">
+                        <div className="mt-6 p-6 bg-red-500/10 backdrop-blur-xl rounded-2xl border border-red-500/20">
+                          <h4 className="font-bold text-red-400 mb-3">Journal des erreurs :</h4>
+                          <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
                             {results.errors.map((error, index) => (
-                              <div key={index} className="text-sm text-red-700">
+                              <div key={index} className="text-sm text-red-300 bg-red-500/10 rounded-lg p-2">
                                 <span className="font-medium">{error.contact}:</span> {error.error}
                               </div>
                             ))}
@@ -1074,95 +1105,97 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
 
           {/* Results Tab */}
           {activeTab === 'results' && (
-            <div className="p-6 sm:p-8">
-              <div className="mb-8">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                  Résultats de Campagne
+            <div className="relative p-8 lg:p-10">
+              <div className="mb-10">
+                <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-3">
+                  Analytics Dashboard
                 </h2>
-                <p className="text-gray-600">Analysez les performances de votre campagne SMS</p>
+                <p className="text-gray-400 text-lg">Intelligence artificielle pour optimiser vos campagnes</p>
               </div>
               
               {campaignStatus === 'idle' ? (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6 mx-auto">
-                    <BarChart3 className="h-10 w-10 text-gray-400" />
+                <div className="text-center py-24">
+                  <div className="relative inline-block mb-8">
+                    <div className="w-32 h-32 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-full flex items-center justify-center mb-6 mx-auto backdrop-blur-xl border border-white/10">
+                      <BarChart3 className="h-16 w-16 text-purple-400" />
+                    </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">Aucune campagne lancée</h3>
-                  <p className="text-gray-600 max-w-md mx-auto">
-                    Les résultats et analytics apparaîtront ici après le lancement de votre première campagne
+                  <h3 className="text-3xl font-bold text-white mb-4">Analytics en Attente</h3>
+                  <p className="text-gray-400 max-w-md mx-auto text-lg">
+                    Les statistiques détaillées apparaîtront ici après votre première campagne
                   </p>
                 </div>
               ) : (
-                <div className="space-y-8">
+                <div className="space-y-10">
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard
-                      title="Messages Total"
+                      title="Messages"
                       value={results.total}
-                      subtitle="Campagne complète"
-                      color="bg-blue-500"
+                      subtitle="Total envoyé"
+                      color="bg-gradient-to-br from-purple-500 to-pink-500"
                       icon={MessageSquare}
                       trend={12}
                     />
                     <StatCard
-                      title="Envoyés"
+                      title="Délivrés"
                       value={results.sent}
                       subtitle="Avec succès"
-                      color="bg-green-500"
+                      color="bg-gradient-to-br from-green-500 to-emerald-500"
                       icon={CheckCircle}
                       trend={8}
                     />
                     <StatCard
                       title="Échecs"
                       value={results.failed}
-                      subtitle="À retraiter"
-                      color="bg-red-500"
+                      subtitle="Non délivrés"
+                      color="bg-gradient-to-br from-red-500 to-pink-500"
                       icon={AlertCircle}
                       trend={-2}
                     />
                     <StatCard
-                      title="Taux de Succès"
+                      title="Performance"
                       value={`${results.total > 0 ? Math.round((results.sent / results.total) * 100) : 0}%`}
-                      subtitle="Performance"
-                      color="bg-purple-500"
+                      subtitle="Taux de succès"
+                      color="bg-gradient-to-br from-blue-500 to-cyan-500"
                       icon={TrendingUp}
                       trend={5}
                     />
                   </div>
 
-                  <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden">
-                    <div className="p-6 border-b border-gray-200 bg-white">
-                      <h3 className="text-xl font-semibold text-gray-800 flex items-center space-x-2">
-                        <FileText size={20} className="text-blue-600" />
-                        <span>Détails de la Campagne</span>
+                  <div className="bg-gradient-to-br from-purple-500/5 to-pink-500/5 backdrop-blur-xl rounded-3xl overflow-hidden border border-white/10">
+                    <div className="p-8 border-b border-white/10 bg-black/20">
+                      <h3 className="text-2xl font-bold text-white flex items-center space-x-3">
+                        <FileText size={28} className="text-purple-400" />
+                        <span>Rapport Détaillé</span>
                       </h3>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="bg-gray-100">
-                            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Contact</th>
-                            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Téléphone</th>
-                            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Statut</th>
-                            <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Heure</th>
+                          <tr className="bg-black/30 border-b border-white/10">
+                            <th className="px-8 py-5 text-left text-sm font-bold text-gray-300 uppercase tracking-wider">Contact</th>
+                            <th className="px-8 py-5 text-left text-sm font-bold text-gray-300 uppercase tracking-wider">Téléphone</th>
+                            <th className="px-8 py-5 text-left text-sm font-bold text-gray-300 uppercase tracking-wider">Statut</th>
+                            <th className="px-8 py-5 text-left text-sm font-bold text-gray-300 uppercase tracking-wider">Horodatage</th>
                           </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="divide-y divide-white/5">
                           {contacts.map((contact) => {
                             const nameField = csvHeaders.find(h => h.includes('nom') || h.includes('name')) || csvHeaders[0] || 'nom';
                             const phoneField = csvHeaders.find(h => h.includes('telephone') || h.includes('phone') || h.includes('tel') || h.includes('mobile')) || 'telephone';
                             
                             return (
-                              <tr key={contact.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{String(contact[nameField]) || 'N/A'}</td>
-                                <td className="px-6 py-4 text-sm text-gray-600 font-mono">{String(contact[phoneField]) || 'N/A'}</td>
-                                <td className="px-6 py-4">
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    <CheckCircle size={12} className="mr-1" />
-                                    Envoyé
+                              <tr key={contact.id} className="hover:bg-white/5 transition-colors duration-200">
+                                <td className="px-8 py-5 text-sm font-medium text-white">{String(contact[nameField]) || 'N/A'}</td>
+                                <td className="px-8 py-5 text-sm text-gray-400 font-mono">{String(contact[phoneField]) || 'N/A'}</td>
+                                <td className="px-8 py-5">
+                                  <span className="inline-flex items-center px-4 py-2 rounded-full text-xs font-bold bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-400 border border-green-500/30">
+                                    <CheckCircle size={14} className="mr-2" />
+                                    Délivré
                                   </span>
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-500 font-mono">
-                                  {new Date().toLocaleTimeString('fr-FR')}
+                                <td className="px-8 py-5 text-sm text-gray-500 font-mono">
+                                  {new Date().toLocaleString('fr-FR')}
                                 </td>
                               </tr>
                             );
@@ -1170,20 +1203,26 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
                         </tbody>
                       </table>
                     </div>
+                    <div className="p-6 bg-black/20 border-t border-white/10">
+                      <button className="flex items-center justify-center space-x-2 text-purple-400 hover:text-purple-300 font-medium transition-colors duration-200">
+                        <Download size={20} />
+                        <span>Exporter le rapport complet</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Voice Tab - Simplified Version */}
+          {/* Voice Tab */}
           {activeTab === 'voice' && (
-            <div className="p-6 sm:p-8">
-              <div className="mb-6">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                  Campagne d&apos;Appels Vocaux AI
+            <div className="relative p-8 lg:p-10">
+              <div className="mb-10">
+                <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-3">
+                  Voice AI Revolution
                 </h2>
-                <p className="text-gray-600">Lancez des appels automatisés avec l&apos;intelligence artificielle</p>
+                <p className="text-gray-400 text-lg">Assistant vocal nouvelle génération propulsé par l&apos;intelligence artificielle</p>
               </div>
 
               <VoiceCampaignSection 
@@ -1194,6 +1233,8 @@ Martin Dubois,+33123456789,14h30,2024-05-28`}
           )}
         </div>
       </div>
+
+
     </div>
   );
 };
