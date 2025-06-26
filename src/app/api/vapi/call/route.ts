@@ -279,7 +279,15 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Build update payload - only include fields that are provided
-    const updatePayload: any = {};
+    type UpdatePayload = {
+      firstMessage?: string;
+      name?: string;
+      voicemailMessage?: string;
+      endCallMessage?: string;
+      model?: string;
+      voice?: string;
+    };
+    const updatePayload: UpdatePayload = {};
     if (body.firstMessage !== undefined) updatePayload.firstMessage = body.firstMessage;
     if (body.name !== undefined) updatePayload.name = body.name;
     if (body.voicemailMessage !== undefined) updatePayload.voicemailMessage = body.voicemailMessage;

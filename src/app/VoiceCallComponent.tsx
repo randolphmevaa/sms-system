@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, PhoneOff, Clock, Settings, Save, RefreshCw, Sparkles, Shield, CheckCircle, ChevronRight } from 'lucide-react';
+import { Phone, PhoneOff, Clock, Settings, Save, RefreshCw, Sparkles, Shield, CheckCircle } from 'lucide-react';
 
 interface VoiceCallProps {
   contact: {
@@ -166,7 +166,7 @@ const VoiceCallComponent: React.FC<VoiceCallProps> = ({ contact, onCallComplete 
           {callStatus === 'active' && (
             <div className="text-sm text-green-400 mt-2 flex items-center space-x-2">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span>Appel en cours avec l'assistant IA</span>
+              <span>Appel en cours avec l&apos;assistant IA</span>
             </div>
           )}
           {callStatus === 'ended' && (
@@ -294,7 +294,7 @@ const AssistantSettingsPanel: React.FC<{
         <div className="p-6 border-b border-purple-500/20 bg-black/30 backdrop-blur-xl relative">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-              Paramètres de l'Assistant IA
+              Paramètres de l&apos;Assistant IA
             </h2>
             <button
               onClick={onClose}
@@ -319,7 +319,7 @@ const AssistantSettingsPanel: React.FC<{
             <>
               <div>
                 <label className="block text-sm font-bold text-purple-300 mb-3 uppercase tracking-wider">
-                  Nom de l'Assistant
+                  Nom de l&apos;Assistant
                 </label>
                 <input
                   type="text"
@@ -332,7 +332,7 @@ const AssistantSettingsPanel: React.FC<{
 
               <div>
                 <label className="block text-sm font-bold text-purple-300 mb-3 uppercase tracking-wider">
-                  Message d'Introduction
+                  Message d&apos;Introduction
                 </label>
                 <textarea
                   value={settings.firstMessage}
@@ -386,7 +386,7 @@ const AssistantSettingsPanel: React.FC<{
           <p className="text-sm text-gray-300 flex items-center">
             <Shield size={16} className="mr-2 text-purple-400" />
             <strong className="text-purple-300">Note:</strong>
-            <span className="ml-1">Les modifications s'appliqueront aux nouveaux appels uniquement.</span>
+            <span className="ml-1">Les modifications s&apos;appliqueront aux nouveaux appels uniquement.</span>
           </p>
         </div>
       </div>
@@ -459,7 +459,7 @@ export const VoiceCampaignSection: React.FC<{
           </div>
           <h3 className="text-3xl font-bold text-white mb-4">Assistant Vocal IA en Attente</h3>
           <p className="text-gray-400 max-w-md mx-auto text-lg">
-            Importez des contacts pour débloquer la puissance de l'assistant vocal propulsé par l'IA
+            Importez des contacts pour débloquer la puissance de l&apos;assistant vocal propulsé par l&apos;IA
           </p>
         </div>
       ) : (
@@ -546,7 +546,7 @@ export const VoiceCampaignSection: React.FC<{
       <div className="space-y-4 mt-8">
         <h4 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
           <Phone size={20} className="text-purple-400" />
-          <span>File d'Appels Active</span>
+          <span>File d&apos;Appels Active</span>
         </h4>
         {contacts.map(contact => (
           <VoiceCallComponent
