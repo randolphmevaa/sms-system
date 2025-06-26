@@ -176,61 +176,6 @@ const AnimatedBackground: React.FC = () => {
   );
 };
 
-// Premium Voice Campaign Component
-// const VoiceCampaignSection: React.FC<{ contacts: Contact[]; template: string }> = ({ contacts, template }) => {
-//   return (
-//     <div className="space-y-6">
-//       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-//         <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-3xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 transform hover:scale-105">
-//           <div className="flex items-center justify-between mb-4">
-//             <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl">
-//               <Phone className="w-6 h-6 text-white" />
-//             </div>
-//             <span className="text-xs text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full">AI Powered</span>
-//           </div>
-//           <h3 className="text-xl font-bold text-white mb-2">Appels Intelligents</h3>
-//           <p className="text-gray-400 text-sm">Assistant vocal AI pour conversations naturelles</p>
-//         </div>
-        
-//         <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-xl rounded-3xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 transform hover:scale-105">
-//           <div className="flex items-center justify-between mb-4">
-//             <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl">
-//               <Activity className="w-6 h-6 text-white" />
-//             </div>
-//             <span className="text-xs text-blue-300 bg-blue-500/20 px-3 py-1 rounded-full">Temps Réel</span>
-//           </div>
-//           <h3 className="text-xl font-bold text-white mb-2">Analyse Live</h3>
-//           <p className="text-gray-400 text-sm">Suivez vos appels en temps réel</p>
-//         </div>
-        
-//         <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-xl rounded-3xl p-6 border border-white/10 hover:border-white/20 transition-all duration-300 transform hover:scale-105">
-//           <div className="flex items-center justify-between mb-4">
-//             <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl">
-//               <Shield className="w-6 h-6 text-white" />
-//             </div>
-//             <span className="text-xs text-green-300 bg-green-500/20 px-3 py-1 rounded-full">Sécurisé</span>
-//           </div>
-//           <h3 className="text-xl font-bold text-white mb-2">100% Conforme</h3>
-//           <p className="text-gray-400 text-sm">Respect total du RGPD</p>
-//         </div>
-//       </div>
-      
-//       <div className="bg-gradient-to-r from-purple-500/5 to-pink-500/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10">
-//         <div className="text-center">
-//           <h3 className="text-2xl font-bold text-white mb-4">Prêt à révolutionner vos appels ?</h3>
-//           <p className="text-gray-400 mb-6 max-w-2xl mx-auto">
-//             Notre IA conversationnelle gère des milliers d'appels simultanément avec un taux de satisfaction de 95%
-//           </p>
-//           <button className="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-2xl hover:scale-105 transition-all duration-300 shadow-2xl hover:shadow-purple-500/25">
-//             Configurer la Campagne Vocale
-//             <ArrowRight className="inline-block ml-2 w-5 h-5" />
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
 // Main SMS Campaign System Component
 const SMSCampaignSystem: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('contacts');
@@ -1231,6 +1176,7 @@ Sophie Laurent,+33987654321,16h00,2024-05-28`}
               />
             </div>
           )}
+          
         </div>
       </div>
 

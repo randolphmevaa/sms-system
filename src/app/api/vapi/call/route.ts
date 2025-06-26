@@ -155,10 +155,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Optional: Add a GET endpoint to check call status
+// GET endpoint to check call status or get assistant info
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const callId = searchParams.get('callId');
+  const getAssistant = searchParams.get('getAssistant');
 
   if (!VAPI_API_KEY) {
     return NextResponse.json(
@@ -167,9 +168,55 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // If getAssistant flag is set, return assistant info
+  if (getAssistant === 'true') {
+    if (!VAPI_ASSISTANT_ID) {
+      return NextResponse.json(
+        { error: 'Configuration manquante: VAPI_ASSISTANT_ID' },
+        { status: 500 }
+      );
+    }
+
+    try {
+      const response = await fetch(`https://api.vapi.ai/assistant/${VAPI_ASSISTANT_ID}`, {
+        headers: {
+          'Authorization': `Bearer ${VAPI_API_KEY}`,
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error fetching assistant:', errorText);
+        return NextResponse.json(
+          { error: 'Erreur lors de la récupération de l\'assistant' },
+          { status: response.status }
+        );
+      }
+
+      const assistantData = await response.json();
+      
+      return NextResponse.json({
+        id: assistantData.id,
+        name: assistantData.name,
+        firstMessage: assistantData.firstMessage,
+        model: assistantData.model,
+        voice: assistantData.voice,
+        transcriber: assistantData.transcriber
+      });
+
+    } catch (error) {
+      console.error('Server error:', error);
+      return NextResponse.json(
+        { error: 'Erreur serveur' },
+        { status: 500 }
+      );
+    }
+  }
+
+  // Original call status check
   if (!callId) {
     return NextResponse.json(
-      { error: 'Call ID requis' },
+      { error: 'Call ID ou getAssistant=true requis' },
       { status: 400 }
     );
   }
@@ -212,6 +259,94 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// PATCH endpoint to update assistant (e.g., firstMessage)
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    if (!VAPI_API_KEY) {
+      return NextResponse.json(
+        { error: 'Configuration manquante: VAPI_API_KEY' },
+        { status: 500 }
+      );
+    }
+
+    if (!VAPI_ASSISTANT_ID) {
+      return NextResponse.json(
+        { error: 'Configuration manquante: VAPI_ASSISTANT_ID' },
+        { status: 500 }
+      );
+    }
+
+    // Build update payload - only include fields that are provided
+    const updatePayload: any = {};
+    if (body.firstMessage !== undefined) updatePayload.firstMessage = body.firstMessage;
+    if (body.name !== undefined) updatePayload.name = body.name;
+    if (body.voicemailMessage !== undefined) updatePayload.voicemailMessage = body.voicemailMessage;
+    if (body.endCallMessage !== undefined) updatePayload.endCallMessage = body.endCallMessage;
+    if (body.model !== undefined) updatePayload.model = body.model;
+    if (body.voice !== undefined) updatePayload.voice = body.voice;
+
+    console.log('Updating assistant with:', JSON.stringify(updatePayload, null, 2));
+
+    const response = await fetch(`https://api.vapi.ai/assistant/${VAPI_ASSISTANT_ID}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${VAPI_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(updatePayload)
+    });
+
+    const responseText = await response.text();
+    console.log('Vapi API update response status:', response.status);
+    console.log('Vapi API update response:', responseText);
+
+    if (!response.ok) {
+      let errorDetails;
+      try {
+        errorDetails = JSON.parse(responseText);
+      } catch {
+        errorDetails = { message: responseText };
+      }
+
+      console.error('Vapi API update error:', errorDetails);
+      
+      return NextResponse.json(
+        { 
+          error: 'Erreur lors de la mise à jour de l\'assistant',
+          details: errorDetails 
+        },
+        { status: response.status }
+      );
+    }
+
+    const updatedAssistant = JSON.parse(responseText);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Assistant mis à jour avec succès',
+      assistant: {
+        id: updatedAssistant.id,
+        name: updatedAssistant.name,
+        firstMessage: updatedAssistant.firstMessage,
+        voicemailMessage: updatedAssistant.voicemailMessage,
+        endCallMessage: updatedAssistant.endCallMessage
+      }
+    });
+
+  } catch (error) {
+    console.error('Server error:', error);
+    return NextResponse.json(
+      { 
+        error: 'Erreur serveur lors de la mise à jour',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}
+
 // For Pages Router (pages/api/vapi/call.ts), use this instead:
 /*
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -221,6 +356,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // POST logic here (same as above but adapted for Pages API)
   } else if (req.method === 'GET') {
     // GET logic here (same as above but adapted for Pages API)
+  } else if (req.method === 'PATCH') {
+    // PATCH logic here (same as above but adapted for Pages API)
   } else {
     res.status(405).json({ error: 'Method not allowed' });
   }
