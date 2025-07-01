@@ -296,7 +296,7 @@ const AssistantSettingsSection: React.FC = () => {
     if (isExpanded && !settings.name && !settings.firstMessage) {
       loadAssistantSettings();
     }
-  }, [isExpanded]);
+  }, [isExpanded, settings.firstMessage, settings.name]);
 
   return (
     <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-3xl border border-purple-500/20 overflow-hidden mb-8">

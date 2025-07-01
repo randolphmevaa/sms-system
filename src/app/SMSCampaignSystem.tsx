@@ -191,7 +191,7 @@ const SMSCampaignSystem: React.FC = () => {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string>('');
   const [templateError, setTemplateError] = useState<string>('');
-  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+  // const [showVoiceSettings, setShowVoiceSettings] = useState(false);
 
   const [customFields, setCustomFields] = useState<string[]>(['nom', 'telephone', 'rdv', 'date']);
   const [isEditingFields, setIsEditingFields] = useState<boolean>(false);
