@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+// import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+// import ReactDOM from 'react-dom';
 import { 
   Upload, 
   MessageSquare, 
@@ -189,6 +191,172 @@ const SMSCampaignSystem: React.FC = () => {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string>('');
   const [templateError, setTemplateError] = useState<string>('');
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+
+  const [customFields, setCustomFields] = useState<string[]>(['nom', 'telephone', 'rdv', 'date']);
+  const [isEditingFields, setIsEditingFields] = useState<boolean>(false);
+  const [newFieldName, setNewFieldName] = useState<string>('');
+  const [smsCredits, setSmsCredits] = useState<number>(() => {
+      // Check if we're in a browser environment
+      if (typeof window !== 'undefined') {
+        try {
+          const savedCredits = localStorage.getItem('smsCredits');
+          if (savedCredits !== null) {
+            const parsed = parseInt(savedCredits, 10);
+            // Validate the parsed value
+            if (!isNaN(parsed) && parsed >= 0) {
+              return parsed;
+            }
+          }
+        } catch (error) {
+          console.error('Error loading SMS credits from localStorage:', error);
+        }
+      }
+      // Default value if nothing in localStorage or any error
+      return 203;
+    });
+
+    // Save SMS credits to localStorage whenever they change
+    useEffect(() => {
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('smsCredits', smsCredits.toString());
+        } catch (error) {
+          console.error('Error saving SMS credits to localStorage:', error);
+        }
+      }
+    }, [smsCredits]);
+
+  // Update the startCampaign function to decrease credits
+  const startCampaign = async (): Promise<void> => {
+    if (contacts.length === 0 || !template || smsCredits < contacts.length) {
+      // Show alert if insufficient credits
+      if (smsCredits < contacts.length) {
+        alert(`Crédits insuffisants! Vous avez ${smsCredits} SMS mais vous essayez d'envoyer ${contacts.length} messages.`);
+      }
+      return;
+    }
+    
+    const phoneField = csvHeaders.find(header => 
+      header.includes('telephone') || header.includes('phone') || header.includes('tel') || header.includes('mobile')
+    ) || 'telephone';
+    
+    setCampaignStatus('running');
+    setResults({ sent: 0, failed: 0, total: contacts.length, errors: [] });
+    
+    let creditsUsed = 0;
+    
+    for (let i = 0; i < contacts.length; i++) {
+      // Check if we still have credits before sending each message
+      if (smsCredits - creditsUsed <= 0) {
+        setResults(prev => ({ 
+          ...prev, 
+          failed: prev.failed + 1,
+          errors: [...prev.errors, { 
+            contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), 
+            error: 'Crédits épuisés pendant la campagne' 
+          }]
+        }));
+        setProgress(((i + 1) / contacts.length) * 100);
+        continue;
+      }
+
+      const contact = contacts[i];
+      const personalizedMessage = generatePreview(contact);
+      const phoneNumber = contact[phoneField];
+      
+      if (!phoneNumber) {
+        setResults(prev => ({ 
+          ...prev, 
+          failed: prev.failed + 1,
+          errors: [...prev.errors, { contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), error: 'Numéro de téléphone manquant' }]
+        }));
+        setProgress(((i + 1) / contacts.length) * 100);
+        continue;
+      }
+      
+      try {
+        const response = await fetch('/api/sms', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            recipient: [String(phoneNumber)],
+            message: personalizedMessage,
+            sender: sender,
+            message_type: 'PRM',
+            returnCredits: true,
+            returnRemaining: true
+          })
+        });
+
+        const result = await response.json();
+        
+        if (response.ok && result.result === 'OK') {
+          setResults(prev => ({ 
+            ...prev, 
+            sent: prev.sent + 1 
+          }));
+          // Increment credits used
+          creditsUsed++;
+          // Update credits in real-time
+          setSmsCredits(prev => Math.max(0, prev - 1));
+        } else {
+          setResults(prev => ({ 
+            ...prev, 
+            failed: prev.failed + 1,
+            errors: [...prev.errors, { 
+              contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), 
+              error: result.error || result.details || 'Erreur inconnue' 
+            }]
+          }));
+        }
+      } catch (error) {
+        setResults(prev => ({ 
+          ...prev, 
+          failed: prev.failed + 1,
+          errors: [...prev.errors, { 
+            contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), 
+            error: error instanceof Error ? error.message : 'Erreur réseau' 
+          }]
+        }));
+      }
+      
+      setProgress(((i + 1) / contacts.length) * 100);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    setCampaignStatus('completed');
+    
+    // Log final credits state
+    console.log(`Campaign completed. Credits used: ${creditsUsed}. Remaining credits: ${smsCredits - creditsUsed}`);
+  };
+
+  // Add this function to handle adding custom fields
+  const addCustomField = () => {
+    if (newFieldName.trim() && !customFields.includes(newFieldName.trim().toLowerCase())) {
+      setCustomFields([...customFields, newFieldName.trim().toLowerCase()]);
+      setNewFieldName('');
+    }
+  };
+
+  // Add this function to remove custom fields
+  const removeCustomField = (field: string) => {
+    if (customFields.length > 1) { // Keep at least one field
+      setCustomFields(customFields.filter(f => f !== field));
+    }
+  };
+
+  // Update the addContact function
+  const addContact = (): void => {
+    const newContact: Contact = { id: Date.now() };
+    const fieldsToAdd = csvHeaders.length > 0 ? csvHeaders : customFields;
+    fieldsToAdd.forEach(field => {
+      newContact[field] = '';
+    });
+    setContacts([...contacts, newContact]);
+  };
 
   const handleTemplateChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const rawValue = e.target.value;
@@ -257,14 +425,14 @@ const SMSCampaignSystem: React.FC = () => {
     }
   };
 
-  const addContact = (): void => {
-    const newContact: Contact = { id: Date.now() };
-    const fieldsToAdd = csvHeaders.length > 0 ? csvHeaders : ['nom', 'telephone', 'rdv', 'date'];
-    fieldsToAdd.forEach(field => {
-      newContact[field] = '';
-    });
-    setContacts([...contacts, newContact]);
-  };
+  // const addContact = (): void => {
+  //   const newContact: Contact = { id: Date.now() };
+  //   const fieldsToAdd = csvHeaders.length > 0 ? csvHeaders : ['nom', 'telephone', 'rdv', 'date'];
+  //   fieldsToAdd.forEach(field => {
+  //     newContact[field] = '';
+  //   });
+  //   setContacts([...contacts, newContact]);
+  // };
 
   const updateContact = (id: number, field: string, value: string): void => {
     setContacts(contacts.map(contact => 
@@ -290,81 +458,81 @@ const SMSCampaignSystem: React.FC = () => {
     return preview;
   };
 
-  const startCampaign = async (): Promise<void> => {
-    if (contacts.length === 0 || !template) return;
+  // const startCampaign = async (): Promise<void> => {
+  //   if (contacts.length === 0 || !template) return;
     
-    const phoneField = csvHeaders.find(header => 
-      header.includes('telephone') || header.includes('phone') || header.includes('tel') || header.includes('mobile')
-    ) || 'telephone';
+  //   const phoneField = csvHeaders.find(header => 
+  //     header.includes('telephone') || header.includes('phone') || header.includes('tel') || header.includes('mobile')
+  //   ) || 'telephone';
     
-    setCampaignStatus('running');
-    setResults({ sent: 0, failed: 0, total: contacts.length, errors: [] });
+  //   setCampaignStatus('running');
+  //   setResults({ sent: 0, failed: 0, total: contacts.length, errors: [] });
     
-    for (let i = 0; i < contacts.length; i++) {
-      const contact = contacts[i];
-      const personalizedMessage = generatePreview(contact);
-      const phoneNumber = contact[phoneField];
+  //   for (let i = 0; i < contacts.length; i++) {
+  //     const contact = contacts[i];
+  //     const personalizedMessage = generatePreview(contact);
+  //     const phoneNumber = contact[phoneField];
       
-      if (!phoneNumber) {
-        setResults(prev => ({ 
-          ...prev, 
-          failed: prev.failed + 1,
-          errors: [...prev.errors, { contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), error: 'Numéro de téléphone manquant' }]
-        }));
-        setProgress(((i + 1) / contacts.length) * 100);
-        continue;
-      }
+  //     if (!phoneNumber) {
+  //       setResults(prev => ({ 
+  //         ...prev, 
+  //         failed: prev.failed + 1,
+  //         errors: [...prev.errors, { contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), error: 'Numéro de téléphone manquant' }]
+  //       }));
+  //       setProgress(((i + 1) / contacts.length) * 100);
+  //       continue;
+  //     }
       
-      try {
-        const response = await fetch('/api/sms', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            recipient: [String(phoneNumber)],
-            message: personalizedMessage,
-            sender: sender,
-            message_type: 'PRM',
-            returnCredits: true,
-            returnRemaining: true
-          })
-        });
+  //     try {
+  //       const response = await fetch('/api/sms', {
+  //         method: 'POST',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //         body: JSON.stringify({
+  //           recipient: [String(phoneNumber)],
+  //           message: personalizedMessage,
+  //           sender: sender,
+  //           message_type: 'PRM',
+  //           returnCredits: true,
+  //           returnRemaining: true
+  //         })
+  //       });
 
-        const result = await response.json();
+  //       const result = await response.json();
         
-        if (response.ok && result.result === 'OK') {
-          setResults(prev => ({ 
-            ...prev, 
-            sent: prev.sent + 1 
-          }));
-        } else {
-          setResults(prev => ({ 
-            ...prev, 
-            failed: prev.failed + 1,
-            errors: [...prev.errors, { 
-              contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), 
-              error: result.error || result.details || 'Erreur inconnue' 
-            }]
-          }));
-        }
-      } catch (error) {
-        setResults(prev => ({ 
-          ...prev, 
-          failed: prev.failed + 1,
-          errors: [...prev.errors, { 
-            contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), 
-            error: error instanceof Error ? error.message : 'Erreur réseau' 
-          }]
-        }));
-      }
+  //       if (response.ok && result.result === 'OK') {
+  //         setResults(prev => ({ 
+  //           ...prev, 
+  //           sent: prev.sent + 1 
+  //         }));
+  //       } else {
+  //         setResults(prev => ({ 
+  //           ...prev, 
+  //           failed: prev.failed + 1,
+  //           errors: [...prev.errors, { 
+  //             contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), 
+  //             error: result.error || result.details || 'Erreur inconnue' 
+  //           }]
+  //         }));
+  //       }
+  //     } catch (error) {
+  //       setResults(prev => ({ 
+  //         ...prev, 
+  //         failed: prev.failed + 1,
+  //         errors: [...prev.errors, { 
+  //           contact: String(contact[csvHeaders[0]] || `Contact ${i + 1}`), 
+  //           error: error instanceof Error ? error.message : 'Erreur réseau' 
+  //         }]
+  //       }));
+  //     }
       
-      setProgress(((i + 1) / contacts.length) * 100);
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
+  //     setProgress(((i + 1) / contacts.length) * 100);
+  //     await new Promise(resolve => setTimeout(resolve, 500));
+  //   }
     
-    setCampaignStatus('completed');
-  };
+  //   setCampaignStatus('completed');
+  // };
   
   const TabButton: React.FC<TabButtonProps> = ({ id, label, icon: Icon, isActive, onClick, badge, description }) => (
     <button
@@ -477,6 +645,15 @@ const SMSCampaignSystem: React.FC = () => {
                 <div className="text-sm text-purple-300 font-medium mb-1">Contacts</div>
                 <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">{contacts.length}</div>
               </div>
+              <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-xl rounded-2xl p-5 border border-green-500/20 min-w-[140px]">
+                <div className="text-sm text-green-300 font-medium mb-1 flex items-center space-x-1">
+                  <Zap size={14} />
+                  <span>SMS Restants</span>
+                </div>
+                <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">
+                  {smsCredits.toLocaleString()}
+                </div>
+              </div>
               <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-xl rounded-2xl p-5 border border-blue-500/20 min-w-[120px]">
                 <div className="text-sm text-blue-300 font-medium mb-1">Statut</div>
                 <div className={`text-2xl font-black ${
@@ -485,8 +662,8 @@ const SMSCampaignSystem: React.FC = () => {
                   'text-gray-400'
                 }`}>
                   {campaignStatus === 'completed' ? 'Terminé' :
-                   campaignStatus === 'running' ? 'Actif' :
-                   'Prêt'}
+                  campaignStatus === 'running' ? 'Actif' :
+                  'Prêt'}
                 </div>
               </div>
             </div>
@@ -584,8 +761,63 @@ const SMSCampaignSystem: React.FC = () => {
                     <Plus size={22} className="relative z-10" />
                     <span className="relative z-10">Ajouter</span>
                   </button>
+                  {csvHeaders.length === 0 && contacts.length === 0 && (
+                    <button 
+                      onClick={() => setIsEditingFields(!isEditingFields)}
+                      className="group relative overflow-hidden flex items-center justify-center space-x-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-8 py-4 rounded-2xl transition-all duration-300 font-bold shadow-2xl hover:shadow-blue-500/25 hover:scale-105"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <Settings size={22} className="relative z-10" />
+                      <span className="relative z-10">Personnaliser</span>
+                    </button>
+                  )}
                 </div>
               </div>
+
+              {/* Field customization panel */}
+              {isEditingFields && csvHeaders.length === 0 && (
+                <div className="mb-8 p-6 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-xl rounded-3xl border border-blue-500/20">
+                  <h3 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
+                    <Layers size={24} className="text-blue-400" />
+                    <span>Personnaliser les champs</span>
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={newFieldName}
+                        onChange={(e) => setNewFieldName(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addCustomField()}
+                        placeholder="Nouveau champ..."
+                        className="flex-1 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-white placeholder-gray-500"
+                      />
+                      <button
+                        onClick={addCustomField}
+                        className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-6 py-2 rounded-xl font-medium hover:scale-105 transition-transform duration-200"
+                      >
+                        Ajouter
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {customFields.map(field => (
+                      <div key={field} className="group bg-black/30 backdrop-blur-xl rounded-xl px-4 py-2 flex items-center space-x-2 border border-white/10 hover:border-white/20 transition-all duration-200">
+                        <span className="text-white font-medium">{field}</span>
+                        {customFields.length > 1 && (
+                          <button
+                            onClick={() => removeCustomField(field)}
+                            className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {contacts.length === 0 ? (
                 <div className="text-center py-20">
@@ -639,9 +871,9 @@ const SMSCampaignSystem: React.FC = () => {
                         <span>Support multi-colonnes illimité</span>
                       </div>
                       <pre className="bg-black/30 backdrop-blur-xl p-6 rounded-2xl mt-6 text-sm font-mono text-green-400 border border-green-500/20 overflow-x-auto">
-{`nom,telephone,rdv,date
-Martin Dubois,+33123456789,14h30,2024-05-28
-Sophie Laurent,+33987654321,16h00,2024-05-28`}
+          {`nom,telephone,rdv,date
+          Martin Dubois,+33123456789,14h30,2024-05-28
+          Sophie Laurent,+33987654321,16h00,2024-05-28`}
                       </pre>
                     </div>
                   </div>
@@ -652,7 +884,7 @@ Sophie Laurent,+33987654321,16h00,2024-05-28`}
                     <table className="w-full">
                       <thead>
                         <tr className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-b border-white/10">
-                          {(csvHeaders.length > 0 ? csvHeaders : ['nom', 'telephone', 'rdv', 'date']).map(header => (
+                          {(csvHeaders.length > 0 ? csvHeaders : customFields).map(header => (
                             <th key={header} className="px-6 py-5 text-left text-sm font-bold text-gray-300 uppercase tracking-wider">
                               {header.replace(/_/g, ' ')}
                             </th>
@@ -663,7 +895,7 @@ Sophie Laurent,+33987654321,16h00,2024-05-28`}
                       <tbody className="divide-y divide-white/5">
                         {contacts.map((contact) => (
                           <tr key={contact.id} className="hover:bg-white/5 transition-colors duration-200">
-                            {(csvHeaders.length > 0 ? csvHeaders : ['nom', 'telephone', 'rdv', 'date']).map(field => (
+                            {(csvHeaders.length > 0 ? csvHeaders : customFields).map(field => (
                               <td key={field} className="px-6 py-4">
                                 <input 
                                   value={String(contact[field] || '')}
@@ -919,6 +1151,42 @@ Sophie Laurent,+33987654321,16h00,2024-05-28`}
               
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                 <div className="space-y-8">
+                  {/* SMS Credits Alert Box */}
+                  <div className={`bg-gradient-to-br ${
+                    smsCredits < contacts.length ? 'from-red-500/10 to-orange-500/10 border-red-500/20' :
+                    smsCredits < 100 ? 'from-yellow-500/10 to-orange-500/10 border-yellow-500/20' :
+                    'from-green-500/10 to-emerald-500/10 border-green-500/20'
+                  } backdrop-blur-xl rounded-3xl p-6 border flex items-center space-x-4`}>
+                    <div className={`p-4 rounded-2xl ${
+                      smsCredits < contacts.length ? 'bg-red-500/20' :
+                      smsCredits < 100 ? 'bg-yellow-500/20' :
+                      'bg-green-500/20'
+                    }`}>
+                      <Zap size={32} className={`${
+                        smsCredits < contacts.length ? 'text-red-400' :
+                        smsCredits < 100 ? 'text-yellow-400' :
+                        'text-green-400'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-2xl font-black text-white mb-1">
+                        {smsCredits.toLocaleString()} SMS Disponibles
+                      </div>
+                      <div className={`text-sm ${
+                        smsCredits < contacts.length ? 'text-red-300' :
+                        smsCredits < 100 ? 'text-yellow-300' :
+                        'text-green-300'
+                      }`}>
+                        {smsCredits < contacts.length 
+                          ? `⚠️ Crédits insuffisants ! Il vous manque ${contacts.length - smsCredits} SMS`
+                          : smsCredits < 100 
+                          ? '⚠️ Crédits bientôt épuisés'
+                          : '✓ Crédits suffisants pour votre campagne'
+                        }
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-3xl p-8 border border-purple-500/20">
                     <h3 className="text-2xl font-bold text-white mb-8 flex items-center space-x-3">
                       <Settings size={28} className="text-purple-400" />
@@ -944,14 +1212,25 @@ Sophie Laurent,+33987654321,16h00,2024-05-28`}
                           <span>{template ? 'Configuré' : 'Manquant'}</span>
                         </span>
                       </div>
+                      <div className="bg-black/30 backdrop-blur-xl rounded-2xl p-5 border border-white/10 flex justify-between items-center group hover:scale-105 transition-transform duration-200">
+                        <span className="text-emerald-300 font-medium flex items-center space-x-2">
+                          <Zap size={18} />
+                          <span>Crédits requis</span>
+                        </span>
+                        <span className={`font-black text-2xl ${
+                          smsCredits >= contacts.length ? 'text-emerald-400' : 'text-red-400'
+                        }`}>
+                          {contacts.length} / {smsCredits.toLocaleString()}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   <button
                     onClick={startCampaign}
-                    disabled={contacts.length === 0 || !template || campaignStatus === 'running'}
+                    disabled={contacts.length === 0 || !template || campaignStatus === 'running' || smsCredits < contacts.length}
                     className={`group relative w-full overflow-hidden flex items-center justify-center space-x-4 py-6 px-10 rounded-3xl font-black text-xl transition-all duration-500 transform ${
-                      contacts.length === 0 || !template || campaignStatus === 'running'
+                      contacts.length === 0 || !template || campaignStatus === 'running' || smsCredits < contacts.length
                         ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                         : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-2xl hover:shadow-purple-500/50 hover:scale-105'
                     }`}
@@ -961,6 +1240,11 @@ Sophie Laurent,+33987654321,16h00,2024-05-28`}
                       <>
                         <div className="relative z-10 animate-spin w-6 h-6 border-3 border-white border-t-transparent rounded-full"></div>
                         <span className="relative z-10">Envoi en cours...</span>
+                      </>
+                    ) : smsCredits < contacts.length ? (
+                      <>
+                        <AlertCircle size={28} className="relative z-10" />
+                        <span className="relative z-10">Crédits Insuffisants</span>
                       </>
                     ) : (
                       <>
@@ -1173,6 +1457,7 @@ Sophie Laurent,+33987654321,16h00,2024-05-28`}
               <VoiceCampaignSection 
                 contacts={contacts} 
                 template={template} 
+                // onOpenSettings={() => setShowVoiceSettings(true)}
               />
             </div>
           )}

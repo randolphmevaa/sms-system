@@ -1,6 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, PhoneOff, Clock, Settings, Save, RefreshCw, Sparkles, Shield, CheckCircle } from 'lucide-react';
+import { 
+  Phone, 
+  PhoneOff, 
+  Clock, 
+  Settings, 
+  Save, 
+  RefreshCw, 
+  Sparkles, 
+  Shield, 
+  CheckCircle,
+  Headphones,
+  Activity,
+  TrendingUp,
+  Zap,
+  ChevronDown,
+  // ChevronUp
+} from 'lucide-react';
 
+// TypeScript interfaces
 interface VoiceCallProps {
   contact: {
     id: number;
@@ -22,10 +39,11 @@ interface AssistantSettings {
   name: string;
 }
 
+// Voice Call Component
 const VoiceCallComponent: React.FC<VoiceCallProps> = ({ contact, onCallComplete }) => {
   const [callStatus, setCallStatus] = useState<'idle' | 'connecting' | 'active' | 'ended'>('idle');
   const [callDuration, setCallDuration] = useState(0);
-  const [ , setCallId] = useState<string | null>(null);
+  const [, setCallId] = useState<string | null>(null);
 
   // Get phone number from contact
   const getPhoneNumber = () => {
@@ -210,18 +228,15 @@ const VoiceCallComponent: React.FC<VoiceCallProps> = ({ contact, onCallComplete 
   );
 };
 
-// Assistant Settings Component
-const AssistantSettingsPanel: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onUpdate: () => void;
-}> = ({ isOpen, onClose, onUpdate }) => {
+// Integrated Assistant Settings Component
+const AssistantSettingsSection: React.FC = () => {
   const [settings, setSettings] = useState<AssistantSettings>({
     firstMessage: '',
     name: ''
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Load assistant settings
   const loadAssistantSettings = async () => {
@@ -265,8 +280,6 @@ const AssistantSettingsPanel: React.FC<{
       }
 
       alert('Paramètres sauvegardés avec succès');
-      onUpdate();
-      onClose();
     } catch (error) {
       console.error('Error saving settings:', error);
       const errorMessage = typeof error === 'object' && error !== null && 'message' in error
@@ -278,38 +291,37 @@ const AssistantSettingsPanel: React.FC<{
     }
   };
 
-  // Load settings when panel opens
+  // Load settings when expanded
   useEffect(() => {
-    if (isOpen) {
+    if (isExpanded && !settings.name && !settings.firstMessage) {
       loadAssistantSettings();
     }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
+  }, [isExpanded]);
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[9999]">
-      <div className="bg-gradient-to-br from-gray-900 via-purple-900/50 to-gray-900 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-purple-500/20 relative">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/10 rounded-3xl pointer-events-none" />
-        <div className="p-6 border-b border-purple-500/20 bg-black/30 backdrop-blur-xl relative">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-              Paramètres de l&apos;Assistant IA
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl p-2 transition-all duration-200"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+    <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-3xl border border-purple-500/20 overflow-hidden mb-8">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-6 flex items-center justify-between hover:bg-white/5 transition-colors duration-200"
+      >
+        <div className="flex items-center space-x-4">
+          <div className="p-3 bg-purple-500/20 rounded-2xl backdrop-blur-xl">
+            <Settings size={24} className="text-purple-400" />
+          </div>
+          <div className="text-left">
+            <h3 className="text-xl font-bold text-white">Paramètres de l&apos;Assistant IA</h3>
+            <p className="text-sm text-gray-400 mt-1">Configurez le nom et le message d&apos;introduction de votre assistant</p>
           </div>
         </div>
+        <div className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+          <ChevronDown size={24} className="text-purple-400" />
+        </div>
+      </button>
 
-        <div className="p-8 space-y-6 relative">
+      {isExpanded && (
+        <div className="p-8 border-t border-purple-500/20 space-y-6">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
+            <div className="flex items-center justify-center py-8">
               <div className="relative">
                 <div className="animate-spin w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full"></div>
                 <div className="absolute inset-0 animate-ping w-12 h-12 border-4 border-purple-500/30 rounded-full"></div>
@@ -378,23 +390,23 @@ const AssistantSettingsPanel: React.FC<{
                   )}
                 </button>
               </div>
+
+              <div className="p-5 bg-purple-500/10 backdrop-blur-xl rounded-2xl border border-purple-500/20 mt-6">
+                <p className="text-sm text-gray-300 flex items-center">
+                  <Shield size={16} className="mr-2 text-purple-400" />
+                  <strong className="text-purple-300">Note:</strong>
+                  <span className="ml-1">Les modifications s&apos;appliqueront aux nouveaux appels uniquement.</span>
+                </p>
+              </div>
             </>
           )}
         </div>
-
-        <div className="p-5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-xl border-t border-purple-500/20 rounded-b-3xl">
-          <p className="text-sm text-gray-300 flex items-center">
-            <Shield size={16} className="mr-2 text-purple-400" />
-            <strong className="text-purple-300">Note:</strong>
-            <span className="ml-1">Les modifications s&apos;appliqueront aux nouveaux appels uniquement.</span>
-          </p>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
 
-// Voice Campaign Section with Settings
+// Voice Campaign Section with integrated settings
 export const VoiceCampaignSection: React.FC<{
   contacts: Array<{ id: number; [key: string]: string | number }>;
   template: string;
@@ -402,7 +414,6 @@ export const VoiceCampaignSection: React.FC<{
   const [isRunning, setIsRunning] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [callResults, setCallResults] = useState<Map<number, CallResult>>(new Map());
-  const [showSettings, setShowSettings] = useState(false);
 
   const handleCallComplete = (contactId: number, result: CallResult) => {
     setCallResults(prev => new Map(prev).set(contactId, result));
@@ -464,109 +475,117 @@ export const VoiceCampaignSection: React.FC<{
         </div>
       ) : (
         <>
+          {/* Assistant Settings Section */}
+          <AssistantSettingsSection />
+
           {/* Campaign Header */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">Campagne d&apos;Appels Vocaux</h3>
-            <p className="text-gray-600 text-sm mt-1">
-              {contacts.length} contacts à appeler
-            </p>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            {/* Stats */}
-            <div className="flex items-center space-x-6">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{callResults.size}</div>
-                <div className="text-xs text-gray-500">Complétés</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {callResults.size > 0 
-                    ? Math.round(Array.from(callResults.values()).filter(r => r.status === 'completed').length / callResults.size * 100)
-                    : 0}%
+          <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 backdrop-blur-xl rounded-3xl border border-purple-500/20 overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-pink-500/5 pointer-events-none" />
+            <div className="relative p-8">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 space-y-4 lg:space-y-0">
+                <div>
+                  <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mb-2 flex items-center space-x-3">
+                    <div className="p-3 bg-purple-500/20 rounded-2xl backdrop-blur-xl">
+                      <Phone size={32} className="text-purple-400" />
+                    </div>
+                    <span>Campagne d&apos;Appels Vocaux</span>
+                  </h3>
+                  <p className="text-gray-300 text-lg flex items-center space-x-2 ml-16">
+                    <Sparkles size={16} className="text-yellow-400 animate-pulse" />
+                    <span>{contacts.length} contacts prêts à être appelés par l&apos;IA</span>
+                  </p>
                 </div>
-                <div className="text-xs text-gray-500">Succès</div>
+                
+                <div className="flex items-center space-x-4">
+                  {/* Stats Cards */}
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 backdrop-blur-xl rounded-2xl p-5 border border-green-500/20 min-w-[120px] transform hover:scale-105 transition-transform duration-200">
+                      <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">{callResults.size}</div>
+                      <div className="text-xs text-green-300 font-medium mt-1 uppercase tracking-wider">Complétés</div>
+                    </div>
+                    <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-xl rounded-2xl p-5 border border-blue-500/20 min-w-[120px] transform hover:scale-105 transition-transform duration-200">
+                      <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center">
+                        <TrendingUp size={24} className="mr-1" />
+                        {callResults.size > 0 
+                          ? Math.round(Array.from(callResults.values()).filter(r => r.status === 'completed').length / callResults.size * 100)
+                          : 0}%
+                      </div>
+                      <div className="text-xs text-blue-300 font-medium mt-1 uppercase tracking-wider">Succès</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {/* Settings Button */}
-            <button
-              onClick={() => setShowSettings(true)}
-              className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Settings size={18} />
-              <span>Paramètres</span>
-            </button>
+              {/* Progress Bar */}
+              {isRunning && (
+                <div className="mb-8">
+                  <div className="flex justify-between text-sm text-purple-300 mb-3">
+                    <span className="font-medium flex items-center space-x-2">
+                      <Activity size={16} className="animate-pulse" />
+                      <span>Progression de la campagne</span>
+                    </span>
+                    <span className="font-black text-white">{currentIndex + 1} / {contacts.length}</span>
+                  </div>
+                  <div className="relative w-full bg-black/30 backdrop-blur-xl rounded-full h-4 overflow-hidden border border-white/10">
+                    <div 
+                      className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500 ease-out shadow-lg shadow-purple-500/50"
+                      style={{ width: `${((currentIndex + 1) / contacts.length) * 100}%` }}
+                    >
+                      <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Launch Button */}
+              <button
+                onClick={startCampaign}
+                disabled={contacts.length === 0 || !template || isRunning}
+                className={`group relative w-full overflow-hidden flex items-center justify-center space-x-4 py-6 px-10 rounded-3xl font-black text-xl transition-all duration-500 transform ${
+                  contacts.length === 0 || !template || isRunning
+                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-2xl hover:shadow-purple-500/50 hover:scale-105'
+                }`}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                {isRunning ? (
+                  <>
+                    <div className="relative z-10 animate-spin w-6 h-6 border-3 border-white border-t-transparent rounded-full"></div>
+                    <span className="relative z-10">Campagne d&apos;appels en cours...</span>
+                    <TrendingUp size={24} className="relative z-10 animate-pulse" />
+                  </>
+                ) : (
+                  <>
+                    <Zap size={28} className="relative z-10 group-hover:animate-pulse" />
+                    <span className="relative z-10">Lancer la Campagne Vocale</span>
+                    <Phone size={24} className="relative z-10 group-hover:rotate-12 transition-transform duration-300" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Progress */}
-        {isRunning && (
-          <div className="mb-4">
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Progression</span>
-              <span>{currentIndex + 1} / {contacts.length}</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${((currentIndex + 1) / contacts.length) * 100}%` }}
+          {/* Individual Calls */}
+          <div className="space-y-4 mt-8">
+            <h4 className="text-2xl font-bold text-white mb-6 flex items-center space-x-3">
+              <Headphones size={24} className="text-purple-400" />
+              <span>File d&apos;Appels Active</span>
+              {isRunning && (
+                <span className="text-sm text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20 animate-pulse">
+                  En cours
+                </span>
+              )}
+            </h4>
+            {contacts.map(contact => (
+              <VoiceCallComponent
+                key={contact.id}
+                contact={contact}
+                template={template}
+                onCallComplete={(result) => handleCallComplete(contact.id, result)}
               />
-            </div>
+            ))}
           </div>
-        )}
-
-        {/* Launch Button */}
-        <button
-          onClick={startCampaign}
-          disabled={contacts.length === 0 || !template || isRunning}
-          className={`w-full flex items-center justify-center space-x-2 py-3 px-6 rounded-lg font-medium transition-colors ${
-            contacts.length === 0 || !template || isRunning
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
-          }`}
-        >
-          {isRunning ? (
-            <>
-              <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-              <span>Campagne en cours...</span>
-            </>
-          ) : (
-            <>
-              <Phone size={20} />
-              <span>Lancer la Campagne</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* Individual Calls */}
-      <div className="space-y-4 mt-8">
-        <h4 className="text-xl font-bold text-white mb-4 flex items-center space-x-2">
-          <Phone size={20} className="text-purple-400" />
-          <span>File d&apos;Appels Active</span>
-        </h4>
-        {contacts.map(contact => (
-          <VoiceCallComponent
-            key={contact.id}
-            contact={contact}
-            template={template}
-            onCallComplete={(result) => handleCallComplete(contact.id, result)}
-          />
-        ))}
-      </div>
-
-      {/* Settings Panel */}
-      <AssistantSettingsPanel
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-        onUpdate={() => {
-          // Optional: Refresh any needed data
-        }}
-      />
-      </>
+        </>
       )}
     </div>
   );
