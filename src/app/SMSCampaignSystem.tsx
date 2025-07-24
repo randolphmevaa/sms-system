@@ -213,7 +213,7 @@ const SMSCampaignSystem: React.FC = () => {
         }
       }
       // Default value if nothing in localStorage or any error
-      return 203;
+      return 2700;
     });
 
     // Save SMS credits to localStorage whenever they change
